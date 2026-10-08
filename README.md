@@ -1,9 +1,10 @@
 # Turbo Racing
 
 An arcade sky racer for web game portals (CrazyGames first, Playgama next).
-Ten point-to-point races from a START gate to a FINISH gate, each across a
-different dream-like sky world. Drift to charge turbos, fire nitro, jump the
-gaps and dodge the moving obstacles.
+Ten point-to-point action races from a START gate to a FINISH gate, high in
+the sky and out in deep space. Drift to charge turbos, fire nitro, jump the
+gaps, dodge the moving obstacles and dive through black holes that warp you
+to the next stretch of track.
 
 ## Play locally
 
@@ -55,21 +56,24 @@ touch buttons with auto-accelerate.
 **Core loop:** every race runs from START to FINISH (no laps). Drift through
 corners to charge a 3-tier mini-turbo (blue → orange → purple). Drifting,
 airtime, coins and slipstreaming fill the nitro bar. Dodge moving obstacles:
-sliding blocks, spinning bars, swinging hammers and slamming pistons. A top-3
-finish unlocks the next track; a win earns ★★★. Coins buy cars and upgrades.
+sliding blocks, rolling boulders, spinning bars, swinging hammers and slamming
+pistons. On the space tracks the road runs into a black hole: drive in and you
+come out of a wormhole on a new stretch of track somewhere else, with a speed
+boost. A top-3 finish unlocks the next track; a win earns ★★★. Coins buy cars
+and upgrades.
 
 | # | Track | World | Highlights |
 |---|-------|-------|-----------|
-| 1 | Candy Cloud Run | cotton-candy sky | rainbow sugar road, lollipops, giant donuts, rainbow arches |
-| 2 | Neon Grid Rush | synthwave night | glowing grid road, giant striped sun, neon shapes, sliding blocks |
-| 3 | Prism Peaks | crystal sky | iridescent road, a spiral climb under itself, spinning bars |
-| 4 | Golden Temple | golden sunrise | marble and gold road, temple islands, swinging hammers |
-| 5 | Lantern Festival | moonlit night | red lacquer road, torii gates, a thousand rising lanterns |
-| 6 | Lava Forge | burning sky | obsidian road with lava cracks, meteors, slamming pistons |
-| 7 | Sky Reef | ocean-blue sky | bubble road, flying sky-whales, jellyfish, coral islands |
-| 8 | Aurora Ribbon | polar night | slippery ice ribbon, aurora curtains, shooting stars |
-| 9 | Thunder Citadel | thunderstorm | chrome road with lightning, sky fortress, real lightning bolts |
-| 10 | Cosmic Rainbow Road | galaxy | rainbow road, black hole, ringed planet, every obstacle type |
+| 1 | Sunset Skyway | sunset over a cloud-buried city | highway in the sky, fighter jets, sliding blocks |
+| 2 | Neon Megacity | rainy cyberpunk night | rooftop skyway, flying traffic, searchlights, hologram billboards |
+| 3 | Galaxy Ways | deep space | asteroid fields big and small, ringed planet, **black hole warp** |
+| 4 | Canyon Blitz | dust-storm canyon | floating mesas, swinging wrecking balls, spinning bars |
+| 5 | Frozen Fortress | blizzard | slippery ice road, ice crushers, ice spikes |
+| 6 | Volcano Fury | burning sky | obsidian road with lava cracks, meteor shower, boulders, pistons |
+| 7 | Storm Chaser | thunderstorm | tornado with flying debris, tesla coils, real lightning bolts, open edges |
+| 8 | Air Strike | military airspace | sky carriers, jets, searchlights, blast doors |
+| 9 | Alien Frontier | alien world | UFOs with tractor beams, twin moons, spiral climb, **wormhole warp** |
+| 10 | Event Horizon | edge of a giant black hole | space station ring, asteroid storm, **two black hole warps** |
 
 **Cars:** Drift Ronin (starter), Clubsport GT4, Carbon Stingray, Silhouette R.
 The display names are original nicknames, so no car brand appears in the UI.
@@ -80,7 +84,7 @@ The display names are original nicknames, so no car brand appears in the UI.
 index.html, css/, fonts/        UI shell and styling
 src/main.js                     game controller (screens, race lifecycle, ads)
 src/data/                       courses, worlds, cars: tweak the game here
-src/world/                      course path, road meshes, sky, sky set pieces, scenery
+src/world/                      course path (legs + warp portals), road meshes, sky, sky set pieces, scenery
 src/game/                       car physics, AI, obstacles, race rules, camera, effects
 src/ui/                         menus, HUD, garage showroom
 src/platform/                   portal adapters (CrazyGames, local)

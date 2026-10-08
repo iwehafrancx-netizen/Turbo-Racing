@@ -64,10 +64,8 @@ const PARTICLES = {
   fireflies: { count: 400, color: '#e8ff7a', size: 0.4, fall: 0.2, drift: 1.6, box: 70, opacity: 0.9, additive: true },
   dust: { count: 500, color: '#f2c890', size: 0.6, fall: 0.3, drift: 5, box: 80, opacity: 0.35 },
   stardust: { count: 1200, color: '#c9b6ff', size: 0.5, fall: 0, drift: 0.6, box: 120, opacity: 0.9, additive: true },
-  sparkles: { count: 600, color: '#ffffff', size: 0.45, fall: 0.4, drift: 2, box: 80, opacity: 0.9, additive: true },
-  goldDust: { count: 600, color: '#ffd86b', size: 0.35, fall: -0.3, drift: 1.5, box: 80, opacity: 0.9, additive: true },
-  petals: { count: 900, color: '#ffb7d5', size: 0.55, fall: 1.6, drift: 3, box: 80, opacity: 0.95 },
-  bubbles: { count: 600, color: '#c8ffff', size: 0.6, fall: -1.5, drift: 1.2, box: 80, opacity: 0.6, additive: true },
+  blizzard: { count: 2600, color: '#ffffff', size: 0.3, fall: 9, drift: 6, box: 70, opacity: 0.9 },
+  spores: { count: 700, color: '#9dff7a', size: 0.45, fall: -0.6, drift: 2, box: 90, opacity: 0.9, additive: true },
 };
 
 export class Atmosphere {

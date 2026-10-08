@@ -84,6 +84,25 @@ export class Obstacles {
         root.add(o.mesh);
         break;
       }
+      case 'roll': {
+        // a big tumbling boulder / asteroid rolling across the lanes
+        o.w = 4; o.h = 4; o.d = 4;
+        const g = new THREE.IcosahedronGeometry(2.1, 1);
+        const pos = g.attributes.position;
+        for (let k = 0; k < pos.count; k++) {
+          const v = new THREE.Vector3().fromBufferAttribute(pos, k);
+          v.multiplyScalar(0.85 + ((Math.sin(v.x * 7.1) + Math.sin(v.y * 5.3 + v.z * 3.7)) * 0.5 + 1) * 0.12);
+          pos.setXYZ(k, v.x, v.y, v.z);
+        }
+        g.computeVertexNormals();
+        o.mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: '#4a4048', roughness: 0.9, flatShading: true, emissive: m.glow.color, emissiveIntensity: 0.12 }));
+        const crack = new THREE.Mesh(new THREE.TorusGeometry(2.05, 0.12, 6, 24), m.glow);
+        o.mesh.add(crack);
+        o.amp = W - 2.4;
+        o.omega = 0.8 * spec.speed;
+        root.add(o.mesh);
+        break;
+      }
       case 'sweep': {
         o.len = (W - 1.2) * 2;
         o.post = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.3, 2.6, 16), m.dark);
@@ -157,6 +176,11 @@ export class Obstacles {
     for (const o of this.list) {
       switch (o.type) {
         case 'slide': o.mesh.position.set(-this.slideLat(o, t), o.h / 2, 0); break;
+        case 'roll': {
+          o.mesh.position.set(-this.slideLat(o, t), o.h / 2, 0);
+          o.mesh.rotation.set(0, 0, this.slideLat(o, t) / 2.1);
+          break;
+        }
         case 'sweep': o.mesh.rotation.y = this.sweepAngle(o, t); break;
         case 'hammer': o.mesh.rotation.z = this.hammerTheta(o, t); break;
         case 'piston': {
@@ -179,7 +203,8 @@ export class Obstacles {
     const f = o.f, rx = f.rx, rz = f.rz;
     const at = (lat, y) => [f.x + rx * lat, f.y + y, f.z + rz * lat];
     switch (o.type) {
-      case 'slide': {
+      case 'slide':
+      case 'roll': {
         const lat = this.slideLat(o, t);
         const [x, y, z] = at(lat, o.h / 2);
         out.push([x, y, z, f.yaw, o.w / 2, o.h / 2, o.d / 2, o.amp * o.omega * Math.cos(t * o.omega + o.phase)]);
@@ -262,7 +287,8 @@ export class Obstacles {
     const W = this.path.halfWidth;
     const t = this.t + ds / Math.max(8, v);
     switch (o.type) {
-      case 'slide': {
+      case 'slide':
+      case 'roll': {
         const ol = this.slideLat(o, t);
         if (Math.abs(ol - lat) > o.w / 2 + 2) return null;
         return ol > 0 ? Math.max(-W + 1.6, ol - o.w / 2 - 2.4) : Math.min(W - 1.6, ol + o.w / 2 + 2.4);

@@ -125,12 +125,22 @@ export class UI {
     // mirrored X so the shape matches the in-race minimap
     const tx = (v) => left + (maxX - v) * sc, tz = (v) => top + (maxZ - v) * sc;
     x.lineJoin = 'round'; x.lineCap = 'round';
-    const trace = () => { x.beginPath(); for (let k = 0; k < p.N; k += 4) { k ? x.lineTo(tx(p.px[k]), tz(p.pz[k])) : x.moveTo(tx(p.px[k]), tz(p.pz[k])); } };
+    const trace = () => {
+      x.beginPath();
+      p.legStart.forEach((a, l) => { x.moveTo(tx(p.px[a]), tz(p.pz[a])); for (let k = a; k <= p.legEnd[l]; k += 4) x.lineTo(tx(p.px[k]), tz(p.pz[k])); });
+    };
     x.strokeStyle = 'rgba(0,0,0,0.45)'; x.lineWidth = 12; trace(); x.stroke();
     x.strokeStyle = th.wall.glow || th.wall.a; x.lineWidth = 7; x.shadowColor = x.strokeStyle; x.shadowBlur = 12; trace(); x.stroke();
     x.shadowBlur = 0;
     x.strokeStyle = 'rgba(255,255,255,0.9)'; x.lineWidth = 2.5; trace(); x.stroke();
     x.fillStyle = '#fff';
+    for (const pt of p.portals) {
+      for (const k of [pt.idx, pt.exit]) {
+        const g2 = x.createRadialGradient(tx(p.px[k]), tz(p.pz[k]), 0, tx(p.px[k]), tz(p.pz[k]), 12);
+        g2.addColorStop(0, '#000'); g2.addColorStop(0.45, '#000'); g2.addColorStop(0.6, '#ff9a3d'); g2.addColorStop(1, 'rgba(183,140,255,0)');
+        x.fillStyle = g2; x.beginPath(); x.arc(tx(p.px[k]), tz(p.pz[k]), 12, 0, 7); x.fill();
+      }
+    }
     const si = Math.round(p.startS / p.spacing), fi = Math.round(p.finishS / p.spacing);
     x.fillStyle = '#7dff9a'; x.beginPath(); x.arc(tx(p.px[si]), tz(p.pz[si]), 6, 0, 7); x.fill();
     x.fillStyle = '#fff'; x.fillRect(tx(p.px[fi]) - 6, tz(p.pz[fi]) - 6, 12, 12);

@@ -28,7 +28,7 @@ export class AIDriver {
     const gap = car.progress - player.progress;
     let band = 1;
     if (gap < -40) band = 1 + Math.min(0.08, (-gap - 40) / 1000);
-    else if (gap > 60) band = 1 - Math.min(0.12, (gap - 60) / 1000);
+    else if (gap > 60) band = 1 - Math.min(0.18, (gap - 60) / 900);
     if (player.finished) band = 1;
     car.topMul = this.skill * this.personality * band;
 
@@ -72,7 +72,7 @@ export class AIDriver {
 
     // --- steering toward a look-ahead point ---
     const look = Math.round((8 + speed * 0.42) / p.spacing);
-    const ti = p.wrap(idx + look);
+    const ti = Math.min(p.hi[idx], idx + look); // aim into the portal, not past it
     const tx = p.px[ti] + p.rx[ti] * lat, tz = p.pz[ti] + p.rz[ti] * lat;
     const want = Math.atan2(tx - car.pos.x, tz - car.pos.z);
     const err = wrapAngle(want - car.heading);
@@ -86,7 +86,8 @@ export class AIDriver {
       if (v < safe) safe = v;
     }
     const corner = 0.9 + this.skill * 0.18;
-    const target = Math.min(car.stats.maxSpeed * car.topMul * 1.3, safe * corner);
+    // far ahead of the player: also take the corners a touch slower
+    const target = Math.min(car.stats.maxSpeed * car.topMul * 1.3, safe * corner * (band < 1 ? 0.6 + 0.4 * band : 1));
     if (this.mistake > 0) this.mistake -= dt;
     else if (this.r() < dt * 0.02 * (1.1 - this.skill)) this.mistake = 0.4 + this.r() * 0.5;
 
@@ -108,7 +109,7 @@ export class AIDriver {
     c.drift = false;
 
     // stuck recovery
-    if (speed < 2 && raceTime > 2) {
+    if (speed < 2 && raceTime > 2 && !car.finished) {
       this.stuck = (this.stuck || 0) + dt;
       if (this.stuck > 2.5) { car.respawn(); this.stuck = 0; }
     } else this.stuck = 0;

@@ -76,14 +76,20 @@ export class Hud {
     x.lineJoin = 'round'; x.lineCap = 'round';
     const trace = () => {
       x.beginPath();
-      for (let i = 0; i < path.N; i += 3) {
-        const k = i;
-        if (i === 0) x.moveTo(this.mx(path.px[k]), this.mz(path.pz[k]));
-        else x.lineTo(this.mx(path.px[k]), this.mz(path.pz[k]));
-      }
+      path.legStart.forEach((a, l) => {
+        x.moveTo(this.mx(path.px[a]), this.mz(path.pz[a]));
+        for (let k = a; k <= path.legEnd[l]; k += 3) x.lineTo(this.mx(path.px[k]), this.mz(path.pz[k]));
+      });
     };
     x.strokeStyle = 'rgba(0,0,0,0.6)'; x.lineWidth = 9; trace(); x.stroke();
     x.strokeStyle = 'rgba(255,255,255,0.85)'; x.lineWidth = 4; trace(); x.stroke();
+    // black hole portals and their exits
+    for (const pt of path.portals) {
+      x.fillStyle = '#b78cff';
+      for (const k of [pt.idx, pt.exit]) { x.beginPath(); x.arc(this.mx(path.px[k]), this.mz(path.pz[k]), 6, 0, 7); x.fill(); }
+      x.fillStyle = '#000';
+      x.beginPath(); x.arc(this.mx(path.px[pt.idx]), this.mz(path.pz[pt.idx]), 3, 0, 7); x.fill();
+    }
     // start and finish
     const si = Math.round(path.startS / path.spacing), fi = Math.round(path.finishS / path.spacing);
     x.fillStyle = '#7dff9a';
@@ -126,6 +132,10 @@ export class Hud {
     this.flashEl.style.setProperty('--dur', dur + 's');
     this.flashEl.classList.toggle('small', !!small);
     this._anim(this.flashEl, 'go', text, color);
+  }
+  warp() {
+    const w = document.getElementById('warpfx');
+    w.classList.remove('go'); void w.offsetWidth; w.classList.add('go');
   }
   wrongWay(on) { this.wrong.classList.toggle('on', on); }
   drift(pts, tier) {

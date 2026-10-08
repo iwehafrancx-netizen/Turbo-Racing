@@ -194,6 +194,7 @@ export class AudioSystem {
       case 'buy': [660, 880, 1320].forEach((f, i) => this.tone(f, 0.12, 'square', 0.12, 0, i * 0.06)); break;
       case 'error': this.tone(180, 0.2, 'square', 0.12); break;
       case 'whoosh': this.noiseHit(0.4, 1200, 0.25, 'bandpass'); break;
+      case 'warp': this.tone(90, 1.1, 'sawtooth', 0.25, 8); this.noiseHit(1.2, 600, 0.45, 'bandpass'); this.tone(1400, 0.8, 'sine', 0.12, 0.2, 0.3); break;
       case 'thunder': this.noiseHit(2.2, 160, 0.7, 'lowpass', 0.25); this.noiseHit(0.4, 900, 0.3, 'lowpass', 0.2); break;
       case 'fall': this.tone(600, 0.9, 'sawtooth', 0.12, 0.15); break;
       case 'star': this.tone(1568, 0.25, 'triangle', 0.18); this.tone(2093, 0.35, 'sine', 0.12, 0, 0.08); break;

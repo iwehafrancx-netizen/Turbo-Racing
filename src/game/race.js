@@ -201,11 +201,13 @@ export class Race {
       const c = racing ? ai.update(dt, this.cars, this.player, this.time) : { throttle: 0, brake: 0, steer: 0, drift: false, nitro: false };
       car.step(dt, c);
       this.obstacles.collide(car, this.clock);
+      this._warp(car);
       if (racing) car.updateProgress(this.time);
       if (car.fallen) car.respawn();
     }
     const ev = this.player.step(dt, ctrl);
     const hit = this.obstacles.collide(this.player, this.clock);
+    if (this._warp(this.player)) this._playerWarped();
     if (hit > 3 && this.state === 'racing') {
       this.stats.obstacleHits++;
       this.game.ui.hud.flash('BONK!', '#ff6b6b', 0.6, true);
@@ -249,6 +251,27 @@ export class Race {
       this.cam.shake(Math.min(0.5, p.landed * 0.03));
       this.fx.landing(p.pos);
     }
+  }
+
+  // Black holes / wormholes: entering one carries the car to the next leg.
+  _warp(car) {
+    for (const pt of this.path.portals) {
+      if (car.proj.idx >= pt.idx && car.proj.idx <= this.path.hi[pt.idx]) {
+        car.warpTo(pt.to);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  _playerWarped() {
+    const p = this.player, ui = this.game.ui, a = this.game.audio;
+    p.boostTime = Math.max(p.boostTime, 1.4);
+    this.cam.snap(p);
+    this.cam.shake(0.4);
+    ui.hud.warp();
+    ui.hud.flash('WARP SPEED!', '#b78cff', 1.2);
+    a.play('warp');
   }
 
   // Progress call-outs on the way to the finish.

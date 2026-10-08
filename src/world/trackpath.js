@@ -16,18 +16,35 @@ export class TrackPath {
     this.grip = def.grip ?? 1;
 
     const course = def.course;
-    const pts = course.points.map(([x, z, y]) => new THREE.Vector3(x, y, z));
-    const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
-    const total = curve.getLength();
-    const N = Math.round(total / SPACING) + 1;
-    const sp = curve.getSpacedPoints(N - 1);
+    // Each leg is its own spline; legs are joined end-to-start by warp portals.
+    const xs = [], ys = [], zs = [];
+    this.legStart = []; this.legEnd = [];
+    for (const leg of course.legs) {
+      const curve = new THREE.CatmullRomCurve3(leg.map(([x, z, y]) => new THREE.Vector3(x, y, z)), false, 'centripetal');
+      const n = Math.max(2, Math.round(curve.getLength() / SPACING));
+      this.legStart.push(xs.length);
+      for (const p of curve.getSpacedPoints(n)) { xs.push(p.x); ys.push(p.y); zs.push(p.z); }
+      this.legEnd.push(xs.length - 1);
+    }
+    const N = xs.length;
     this.N = N;
-    this.length = total;
-    this.spacing = total / (N - 1);
-    // authored distances are along the turtle path; rescale to the spline
-    this.sScale = total / course.length;
+    this.spacing = SPACING;
+    this.length = (N - 1) * SPACING;
+    this.sScale = this.length / course.length;
     this.startS = START_S;
-    this.finishS = total - RUNOFF;
+    this.finishS = this.length - RUNOFF;
+    // which leg each sample belongs to (neighbour lookups never cross a warp)
+    this.lo = new Int32Array(N); this.hi = new Int32Array(N);
+    this.brk = new Uint8Array(N);
+    this.legStart.forEach((a, k) => {
+      for (let i = a; i <= this.legEnd[k]; i++) { this.lo[i] = a; this.hi[i] = this.legEnd[k]; }
+      if (k < this.legStart.length - 1) this.brk[this.legEnd[k]] = 1;
+    });
+    // portals: drive in near the end of one leg, come out at the start of the next
+    this.portals = [];
+    for (let k = 0; k < this.legStart.length - 1; k++) {
+      this.portals.push({ idx: this.legEnd[k] - 5, exit: this.legStart[k + 1], to: this.legStart[k + 1] + 3 });
+    }
 
     this.px = new Float32Array(N); this.py = new Float32Array(N); this.pz = new Float32Array(N);
     this.tx = new Float32Array(N); this.ty = new Float32Array(N); this.tz = new Float32Array(N);
@@ -41,7 +58,7 @@ export class TrackPath {
     this.safeSpeed = new Float32Array(N);
 
     for (let i = 0; i < N; i++) {
-      this.px[i] = sp[i].x; this.py[i] = sp[i].y; this.pz[i] = sp[i].z;
+      this.px[i] = xs[i]; this.py[i] = ys[i]; this.pz[i] = zs[i];
     }
     const F = course.features;
     // rollercoaster hills: smooth bumps that launch you at speed
@@ -52,13 +69,13 @@ export class TrackPath {
       for (let i = i0; i <= i1; i++) this.py[i] += r.amp * (1 - Math.cos(((i - i0) / L) * Math.PI * 2)) * 0.5;
     }
     // smooth elevation a little so crests don't kink
-    const at = (arr, i) => arr[clamp(i, 0, N - 1)];
+    const at = (arr, i, c) => arr[clamp(i, this.lo[c], this.hi[c])];
     for (let pass = 0; pass < 3; pass++) {
       const y = Float32Array.from(this.py);
-      for (let i = 0; i < N; i++) this.py[i] = (at(y, i - 2) + at(y, i - 1) + y[i] + at(y, i + 1) + at(y, i + 2)) / 5;
+      for (let i = 0; i < N; i++) this.py[i] = (at(y, i - 2, i) + at(y, i - 1, i) + y[i] + at(y, i + 1, i) + at(y, i + 2, i)) / 5;
     }
     for (let i = 0; i < N; i++) {
-      const a = Math.max(0, i - 1), b = Math.min(N - 1, i + 1);
+      const a = Math.max(this.lo[i], i - 1), b = Math.min(this.hi[i], i + 1);
       const dx = this.px[b] - this.px[a], dy = this.py[b] - this.py[a], dz = this.pz[b] - this.pz[a];
       const l = Math.hypot(dx, dy, dz) || 1;
       this.tx[i] = dx / l; this.ty[i] = dy / l; this.tz[i] = dz / l;
@@ -70,13 +87,13 @@ export class TrackPath {
     // signed curvature (negative = right-hander), smoothed
     const raw = new Float32Array(N);
     for (let i = 0; i < N; i++) {
-      const a = Math.max(0, i - 2), b = Math.min(N - 1, i + 2);
+      const a = Math.max(this.lo[i], i - 2), b = Math.min(this.hi[i], i + 2);
       raw[i] = b > a ? wrapAngle(this.heading[b] - this.heading[a]) / ((b - a) * this.spacing) : 0;
     }
     const W = 6;
     for (let i = 0; i < N; i++) {
       let s = 0;
-      for (let k = -W; k <= W; k++) s += at(raw, i + k);
+      for (let k = -W; k <= W; k++) s += at(raw, i + k, i);
       this.curv[i] = s / (2 * W + 1);
     }
     const bankK = def.bank ?? 0.45;
@@ -167,6 +184,7 @@ export class TrackPath {
     for (const r of this.ramps) if (near(r.i)) return true;
     for (const b of this.boosts) if (near(b.i)) return true;
     for (const o of this.obstacles) if (near(o.i)) return true;
+    for (const p of this.portals) if (near(p.idx) || near(p.exit)) return true;
     return false;
   }
 
@@ -176,7 +194,7 @@ export class TrackPath {
   project(x, y, z, hint, out, window = 30) {
     const N = this.N;
     let best = hint, bestD = Infinity;
-    const k0 = Math.max(0, hint - window), k1 = Math.min(N - 1, hint + window);
+    const k0 = Math.max(this.lo[hint], hint - window), k1 = Math.min(this.hi[hint], hint + window);
     for (let i = k0; i <= k1; i++) {
       const dx = x - this.px[i], dz = z - this.pz[i], dy = (y - this.py[i]) * 0.5;
       const d = dx * dx + dz * dz + dy * dy;
@@ -187,13 +205,15 @@ export class TrackPath {
     const hl = Math.hypot(this.tx[i], this.tz[i]) || 1;
     let along = (dx * this.tx[i] + dz * this.tz[i]) / hl;
     out.over = 0;
-    if (along < 0 && i > 0) {
+    const lo = this.lo[i], hi = this.hi[i];
+    if (along < 0 && i > lo) {
       i--;
       dx = x - this.px[i]; dz = z - this.pz[i];
       along = (dx * this.tx[i] + dz * this.tz[i]) / (Math.hypot(this.tx[i], this.tz[i]) || 1);
     } else if (along < 0) out.over = along;
-    if (i >= N - 1) { i = N - 2; along = this.spacing + Math.max(0, along); }
-    if (i === N - 2 && along > this.spacing) out.over = along - this.spacing;
+    if (i >= hi) { i = hi - 1; along = this.spacing + Math.max(0, along); }
+    if (i === hi - 1 && along > this.spacing) out.over = along - this.spacing;
+    out.end = out.over < 0 ? lo : hi;
     const f = clamp(along / this.spacing, 0, 1);
     const j = i + 1;
     const rx = this.rx[i] + (this.rx[j] - this.rx[i]) * f;
@@ -209,7 +229,7 @@ export class TrackPath {
 
   // Surface height at a projected location (ignores gaps; see groundAt).
   surfaceY(idx, f, lat) {
-    const j = Math.min(this.N - 1, idx + 1);
+    const j = Math.min(this.hi[idx], idx + 1);
     const y = this.py[idx] + (this.py[j] - this.py[idx]) * f;
     const b = this.bank[idx] + (this.bank[j] - this.bank[idx]) * f;
     return y + lat * Math.tan(b);

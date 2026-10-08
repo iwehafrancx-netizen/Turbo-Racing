@@ -2,16 +2,16 @@ import * as THREE from 'three';
 import { roadTextures, noiseTexture, wallTexture, checkerTexture, boostTexture, rampTexture, bannerTexture, coinTexture } from './textures.js';
 
 const OVERHEAD = {
-  candy: { type: 'rainbowArch', every: 380 },
-  synth: { type: 'neonArch', every: 160 },
-  prism: { type: 'ring', every: 240 },
-  temple: { type: 'stoneGate', every: 300 },
-  lantern: { type: 'torii', every: 150 },
-  lava: { type: 'neonArch', every: 280 },
-  reef: { type: 'ring', every: 220 },
-  aurora: { type: 'neonArch', every: 260 },
-  thunder: { type: 'ring', every: 240 },
-  cosmic: { type: 'ring', every: 150 },
+  sunset: { type: 'banner', every: 420 },
+  city: { type: 'neonArch', every: 160 },
+  galaxy: { type: 'ring', every: 200 },
+  canyon: { type: 'banner', every: 520 },
+  frozen: { type: 'neonArch', every: 320 },
+  volcano: { type: 'neonArch', every: 280 },
+  storm: { type: 'ring', every: 260 },
+  military: { type: 'banner', every: 300 },
+  alien: { type: 'ring', every: 200 },
+  horizon: { type: 'ring', every: 160 },
 };
 
 // Build a triangle strip along the track. `section(i)` returns the cross
@@ -33,6 +33,7 @@ function strip(path, section, vScale, { skipGap = true, skipOpen = false, from =
   for (let r = 0; r < rows - 1; r++) {
     const i = path.wrap(from + r);
     if (skipGap && path.gap[i]) continue;
+    if (path.brk[i]) continue; // never bridge across a warp
     if (skipOpen && (path.open[i] || path.open[path.wrap(i + 1)])) continue;
     for (let m = 0; m < M - 1; m++) {
       const a = r * M + m, b = a + 1, c = a + M, d = c + 1;
@@ -60,6 +61,7 @@ export class TrackMesh {
     this._slab();
     this._pillars();
     this._edgeLights();
+    this._portals();
     this._start();
     this._boosts();
     this._ramps();
@@ -192,6 +194,50 @@ export class TrackMesh {
     this.group.add(im);
   }
 
+  // Black hole gates (entry) and wormhole exits between the legs of a course.
+  _portals() {
+    if (!this.path.portals.length) return;
+    const p = this.path, D = p.wallDist;
+    const vortex = (inner, outer, spin) => new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, side: THREE.DoubleSide,
+      uniforms: { time: { value: 0 }, inner: { value: new THREE.Color(inner) }, outer: { value: new THREE.Color(outer) }, spin: { value: spin } },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+      fragmentShader: `uniform float time; uniform vec3 inner; uniform vec3 outer; uniform float spin; varying vec2 vUv;
+        void main(){
+          vec2 q = vUv * 2.0 - 1.0; float r = length(q); if (r > 1.0) discard;
+          float a = atan(q.y, q.x);
+          float arms = 0.5 + 0.5 * sin(a * 5.0 + r * 14.0 * spin - time * 4.0 * spin);
+          float ring = smoothstep(0.32, 0.5, r) * smoothstep(1.0, 0.6, r);
+          vec3 col = mix(inner, outer, smoothstep(0.35, 0.95, r)) * (0.6 + arms * 0.9);
+          float core = 1.0 - smoothstep(0.28, 0.36, r);
+          col = mix(col * ring * 1.8, vec3(0.0), core);
+          float alpha = max(core, ring * (0.55 + arms * 0.45));
+          gl_FragColor = vec4(col, alpha);
+        }`,
+    });
+    this.portalMats = [];
+    const gate = (i, inner, outer, spin, glow) => {
+      const g = new THREE.Group();
+      const [x, y, z] = this._pt(i, 0, 0);
+      g.position.set(x, y + 6, z);
+      g.rotation.y = p.heading[i];
+      const mat = vortex(inner, outer, spin);
+      this.portalMats.push(mat);
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(D + 9, 64), mat);
+      g.add(disc);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(D + 9, 0.7, 10, 72), new THREE.MeshBasicMaterial({ color: glow, toneMapped: false }));
+      g.add(ring);
+      const ring2 = new THREE.Mesh(new THREE.TorusGeometry(D + 11, 0.3, 8, 72), new THREE.MeshBasicMaterial({ color: outer, toneMapped: false, transparent: true, opacity: 0.6 }));
+      g.add(ring2);
+      this.animated.push((t) => { ring2.rotation.z = t * spin; ring.scale.setScalar(1 + Math.sin(t * 3) * 0.02); });
+      this.group.add(g);
+    };
+    for (const pt of p.portals) {
+      gate(pt.idx, '#3a0a5a', '#ff9a3d', 1, '#ffb36b');   // black hole: in
+      gate(pt.exit, '#e8f4ff', '#7a5cff', -1, '#9fd8ff');     // wormhole: out
+    }
+  }
+
   // Glowing anti-gravity pods under floating roads.
   _hoverPods() {
     const p = this.path, spots = [];
@@ -263,7 +309,8 @@ export class TrackMesh {
   _endCaps() {
     const p = this.path, D = p.wallDist;
     const mat = new THREE.MeshStandardMaterial({ map: wallTexture({ style: 'stripes', a: '#ffd23f', b: '#222222' }), roughness: 0.6 });
-    for (const i of [0, p.N - 1]) {
+    const ends = [0, p.N - 1, ...p.legStart.slice(1)];
+    for (const i of ends) {
       const cap = new THREE.Mesh(new THREE.BoxGeometry(D * 2 + 1, 2.4, 1), mat);
       cap.position.set(p.px[i], p.py[i] + 0.9, p.pz[i]);
       cap.rotation.y = p.heading[i];
@@ -414,7 +461,7 @@ export class TrackMesh {
     grp.rotation.y = p.heading[i];
     const glowA = this.theme.wall.glow || '#ff3b6b', glowB = this.theme.wall.glow2 || glowA;
     if (type === 'banner') {
-      return this._gantry(i, c % 2 ? 'TURBO' : 'FULL THROTTLE', 7);
+      return this._gantry(i, ['TURBO', 'FULL THROTTLE', 'NO LIMITS'][c % 3], 7);
     } else if (type === 'neonArch') {
       const t = new THREE.Mesh(
         new THREE.TorusGeometry(D + 1, 0.35, 8, 40, Math.PI),
@@ -447,34 +494,6 @@ export class TrackMesh {
         v.position.set(-D + k * (D / 3), 8.5 - (k % 3) * 0.5, 1.2);
         grp.add(v);
       }
-    } else if (type === 'rainbowArch') {
-      const cols = ['#ff4f6b', '#ff9f3f', '#ffe14f', '#5fe39a', '#4fb3ff', '#9b7bff'];
-      cols.forEach((cc, k) => {
-        grp.add(new THREE.Mesh(new THREE.TorusGeometry(D + 2 + k * 0.9, 0.45, 8, 48, Math.PI), new THREE.MeshBasicMaterial({ color: cc, toneMapped: false })));
-      });
-      for (const s of [-1, 1]) {
-        const cloud = new THREE.Mesh(new THREE.IcosahedronGeometry(3.2, 1), new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#ffe6f4', emissiveIntensity: 0.5, flatShading: true }));
-        cloud.position.set(s * (D + 4.3), 0.5, 0);
-        cloud.scale.set(1.3, 0.8, 1);
-        grp.add(cloud);
-      }
-    } else if (type === 'torii') {
-      const red = new THREE.MeshStandardMaterial({ color: '#c8161d', roughness: 0.4, emissive: '#5a0000', emissiveIntensity: 0.4 });
-      const black = new THREE.MeshStandardMaterial({ color: '#141010', roughness: 0.5 });
-      for (const s of [-1, 1]) {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 11, 12), red);
-        post.position.set(s * (D + 1.2), 5.5, 0);
-        grp.add(post);
-      }
-      const kasagi = new THREE.Mesh(new THREE.BoxGeometry((D + 4) * 2, 1, 1.6), black);
-      kasagi.position.y = 11.4;
-      grp.add(kasagi);
-      const nuki = new THREE.Mesh(new THREE.BoxGeometry((D + 2.4) * 2, 0.8, 1), red);
-      nuki.position.y = 9.4;
-      grp.add(nuki);
-      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 8), new THREE.MeshBasicMaterial({ color: '#ffcf6b', toneMapped: false }));
-      lamp.position.y = 8;
-      grp.add(lamp);
     } else if (type === 'ring') {
       const ring = new THREE.Mesh(
         new THREE.TorusGeometry(D + 2.5, 0.5, 10, 48),
@@ -488,6 +507,7 @@ export class TrackMesh {
   }
 
   update(dt, time) {
+    if (this.portalMats) for (const m of this.portalMats) m.uniforms.time.value = time;
     if (this.boostTex) this.boostTex.offset.y = (this.boostTex.offset.y - dt * 1.6) % 1;
     this._updateCoins(time);
     for (const f of this.animated) f(time);

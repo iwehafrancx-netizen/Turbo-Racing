@@ -101,7 +101,7 @@ export class World {
     this.hemi.intensity = this.theme.hemi[2] + this.atmo.flash * 4;
     this.track.update(dt, time);
     this.atmo.update(dt, camera, time);
-    this.skyfx.update(dt, time);
+    this.skyfx.update(dt, time, camera);
   }
 
   dispose() {

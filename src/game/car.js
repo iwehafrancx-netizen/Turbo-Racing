@@ -370,7 +370,7 @@ export class Vehicle {
 
     // ---- course ends act as barriers ----
     if (pr.over) {
-      const i = pr.over < 0 ? 0 : path.N - 1;
+      const i = pr.end;
       const dir = pr.over < 0 ? 1 : -1;
       const hl = Math.hypot(path.tx[i], path.tz[i]) || 1;
       const nx = (path.tx[i] / hl) * dir, nz = (path.tz[i] / hl) * dir;
@@ -411,7 +411,7 @@ export class Vehicle {
 
   respawn() {
     const p = this.path;
-    let k = p.wrap(this.lastSafeIdx - 12);
+    let k = Math.max(p.lo[this.lastSafeIdx], this.lastSafeIdx - 12);
     for (let n = 0; n < 60 && p.gap[k]; n++) k = p.wrap(k - 1);
     this.reset(k, 0);
     this.vF = 18;
@@ -454,6 +454,27 @@ export class Vehicle {
     }
     // blink while ghosted after respawn
     this.root.visible = this.ghost > 0 ? Math.floor(time * 12) % 2 === 0 : true;
+  }
+
+  // Carry the car through a warp portal to sample i, keeping lane, speed
+  // and its angle to the road.
+  warpTo(i) {
+    const p = this.path;
+    const lat = this.proj.lat;
+    const dh = p.heading[i] - p.heading[this.proj.idx];
+    const c = Math.cos(dh), s = Math.sin(dh);
+    const vx = this.vx, vz = this.vz;
+    this.vx = vx * c + vz * s;
+    this.vz = vz * c - vx * s;
+    this.heading += dh;
+    p.pointAt(i, lat, this.pos);
+    this.vy = 0;
+    this.onGround = true;
+    this.lastGround = this.pos.y;
+    this.proj.idx = i; this.proj.f = 0; this.proj.lat = lat; this.proj.s = i * p.spacing;
+    this.lastSafeIdx = i;
+    this.upVec.set(0, 1, 0);
+    this._syncVisual(1);
   }
 
   // Free the per-car extras (lights, flames); the model itself is shared.
