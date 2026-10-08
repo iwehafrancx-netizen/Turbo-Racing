@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Turbo Racing</title>
+<meta name="description" content="Turbo Racing - drift, boost and jump across 10 wild tracks floating in the sky.">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+<script type="importmap">
+{ "imports": { "three": "./lib/three/three.module.min.js", "three/addons/": "./lib/three/addons/" } }
+</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="gl"></canvas>
+  <div id="speedlines"></div>
+  <div id="vignette"></div>
+
+  <!-- ============ LOADING ============ -->
+  <section id="loading" class="screen show">
+    <div class="logo big"><span class="l1">TURBO</span><span class="l2">RACING</span></div>
+    <div class="loadbar"><div id="loadfill"></div></div>
+    <div id="loadtxt" class="sub">Warming up the engines…</div>
+  </section>
+
+  <!-- ============ TITLE ============ -->
+  <section id="title" class="screen">
+    <div class="topbar">
+      <div class="wallet"><span class="coin-ico"></span><b data-bind="coins">0</b></div>
+      <div class="wallet stars"><span class="star-ico">★</span><b data-bind="stars">0</b><small>/30</small></div>
+      <button class="icon-btn" data-nav="settings" aria-label="Settings">⚙</button>
+    </div>
+    <div class="title-left">
+      <div class="logo"><span class="l1">TURBO</span><span class="l2">RACING</span></div>
+      <div class="tagline">Drift. Boost. Fly. Win.</div>
+      <div class="menu">
+        <button class="btn primary xl" data-nav="tracks">RACE</button>
+        <button class="btn" data-nav="garage">GARAGE</button>
+        <button class="btn ghost" data-nav="howto">HOW TO PLAY</button>
+      </div>
+    </div>
+    <div class="title-car">
+      <div class="car-name" data-bind="carName"></div>
+      <div class="car-tag" data-bind="carTag"></div>
+    </div>
+  </section>
+
+  <!-- ============ TRACK SELECT ============ -->
+  <section id="tracks" class="screen">
+    <div class="topbar">
+      <button class="btn back" data-nav="title">◀ BACK</button>
+      <h2>CHOOSE YOUR TRACK</h2>
+      <div class="wallet"><span class="coin-ico"></span><b data-bind="coins">0</b></div>
+      <div class="wallet stars"><span class="star-ico">★</span><b data-bind="stars">0</b><small>/30</small></div>
+    </div>
+    <div id="track-grid" class="track-grid"></div>
+  </section>
+
+  <!-- ============ GARAGE ============ -->
+  <section id="garage" class="screen">
+    <div class="topbar">
+      <button class="btn back" data-nav="title">◀ BACK</button>
+      <h2>GARAGE</h2>
+      <div class="wallet"><span class="coin-ico"></span><b data-bind="coins">0</b></div>
+    </div>
+    <div class="garage-nav">
+      <button class="arrow" id="g-prev">◀</button>
+      <button class="arrow" id="g-next">▶</button>
+    </div>
+    <div class="garage-panel panel">
+      <div class="g-title"><span id="g-name"></span><span id="g-idx" class="muted"></span></div>
+      <div id="g-tag" class="muted"></div>
+      <div id="g-stats" class="stats"></div>
+      <div id="g-upgrades" class="upgrades"></div>
+      <div class="g-actions">
+        <button class="btn primary" id="g-action">SELECT</button>
+        <button class="btn ad" id="g-ad"><span class="ad-ico">▶</span> FREE <span class="coin-ico sm"></span>250</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RESULTS ============ -->
+  <section id="results" class="screen">
+    <div class="results-wrap">
+      <div class="res-head">
+        <div id="res-place" class="res-place"></div>
+        <div>
+          <div id="res-track" class="res-track"></div>
+          <div id="res-time" class="res-time"></div>
+          <div id="res-stars" class="res-stars"></div>
+          <div id="res-badges" class="badges"></div>
+        </div>
+      </div>
+      <div class="res-body">
+        <div class="panel res-board"><h3>STANDINGS</h3><ol id="res-board"></ol></div>
+        <div class="panel res-rewards"><h3>REWARDS</h3><ul id="res-rewards"></ul>
+          <div class="res-total">TOTAL <span class="coin-ico"></span><b id="res-total">0</b></div>
+          <button class="btn ad wide" id="res-double"><span class="ad-ico">▶</span> DOUBLE COINS</button>
+        </div>
+      </div>
+      <div class="res-actions">
+        <button class="btn" id="res-menu">MENU</button>
+        <button class="btn" id="res-garage">GARAGE</button>
+        <button class="btn" id="res-retry">RETRY</button>
+        <button class="btn primary" id="res-next">NEXT RACE ▶</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HUD ============ -->
+  <div id="hud" class="hidden">
+    <div class="hud-tl">
+      <div class="hud-pos"><b id="h-pos">6</b><sup id="h-suf">th</sup><span>/6</span></div>
+      <div class="hud-lap">LAP <b id="h-lap">1</b>/<span id="h-laps">3</span></div>
+      <div class="hud-time" id="h-time">0:00.000</div>
+      <div class="hud-best">BEST <span id="h-best">--</span></div>
+      <ol id="h-board" class="hud-board"></ol>
+    </div>
+    <div class="hud-tr">
+      <button id="h-pause" class="icon-btn" aria-label="Pause">❚❚</button>
+      <canvas id="h-map" width="180" height="180"></canvas>
+    </div>
+    <div class="hud-br">
+      <div class="speedo">
+        <svg viewBox="0 0 200 200">
+          <defs>
+            <linearGradient id="sg" x1="0" x2="1"><stop offset="0" stop-color="#5ef2ff"/><stop offset="1" stop-color="#ff3b6b"/></linearGradient>
+            <linearGradient id="ng" x1="0" x2="1"><stop offset="0" stop-color="#2a7bff"/><stop offset="1" stop-color="#5ef2ff"/></linearGradient>
+          </defs>
+          <circle cx="100" cy="100" r="84" class="sp-bg"/>
+          <path id="sp-track" class="sp-track" d=""/>
+          <path id="sp-arc" class="sp-arc" d=""/>
+          <path id="ni-track" class="ni-track" d=""/>
+          <path id="ni-arc" class="ni-arc" d=""/>
+        </svg>
+        <div class="sp-num"><b id="h-speed">0</b><span>KM/H</span></div>
+        <div class="ni-label" id="h-nitro-lbl">NITRO</div>
+      </div>
+    </div>
+    <div class="hud-center">
+      <div id="h-count" class="h-count"></div>
+      <div id="h-banner" class="h-banner"></div>
+      <div id="h-flash" class="h-flash"></div>
+      <div id="h-wrong" class="h-wrong">WRONG WAY</div>
+    </div>
+    <div id="h-drift" class="h-drift"><span id="h-drift-pts">0</span><small>DRIFT</small></div>
+    <div id="h-slip" class="h-slip">SLIPSTREAM</div>
+    <div id="h-intro" class="h-intro">
+      <div class="hi-num" id="hi-num">TRACK 1</div>
+      <div class="hi-name" id="hi-name"></div>
+      <div class="hi-tag" id="hi-tag"></div>
+      <div class="hi-hint" id="hi-hint">Hold <kbd>GAS</kbd> right as the lights hit GO for a turbo start!</div>
+    </div>
+    <div id="h-help" class="h-help"></div>
+  </div>
+
+  <!-- ============ TOUCH ============ -->
+  <div id="touch" class="hidden">
+    <div class="t-left">
+      <button data-touch="left" class="tbtn">◀</button>
+      <button data-touch="right" class="tbtn">▶</button>
+    </div>
+    <div class="t-right">
+      <button data-touch="nitro" class="tbtn nitro">N₂O</button>
+      <button data-touch="drift" class="tbtn drift">DRIFT</button>
+      <button data-touch="brake" class="tbtn brake">BRAKE</button>
+    </div>
+  </div>
+
+  <!-- ============ MODALS ============ -->
+  <div id="modal-pause" class="modal">
+    <div class="panel modal-box">
+      <h2>PAUSED</h2>
+      <button class="btn primary wide" id="p-resume">RESUME</button>
+      <button class="btn wide" id="p-restart">RESTART</button>
+      <button class="btn wide" id="p-settings">SETTINGS</button>
+      <button class="btn ghost wide" id="p-quit">QUIT TO MENU</button>
+    </div>
+  </div>
+  <div id="modal-settings" class="modal">
+    <div class="panel modal-box">
+      <h2>SETTINGS</h2>
+      <label class="row">Sound volume <input type="range" id="s-volume" min="0" max="1" step="0.05"></label>
+      <label class="row">Music <input type="checkbox" id="s-music"></label>
+      <label class="row">Graphics
+        <select id="s-quality"><option value="auto">Auto</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select>
+      </label>
+      <label class="row">Camera
+        <select id="s-camera"><option value="0">Close chase</option><option value="1">Far chase</option><option value="2">High</option></select>
+      </label>
+      <button class="btn primary wide" id="s-close">DONE</button>
+    </div>
+  </div>
+  <div id="modal-howto" class="modal">
+    <div class="panel modal-box wide-box">
+      <h2>HOW TO PLAY</h2>
+      <div class="howto">
+        <div><kbd>W</kbd><kbd>↑</kbd> Accelerate</div>
+        <div><kbd>S</kbd><kbd>↓</kbd> Brake / reverse</div>
+        <div><kbd>A</kbd><kbd>D</kbd> <kbd>←</kbd><kbd>→</kbd> Steer</div>
+        <div><kbd>SPACE</kbd> Drift (hold while steering)</div>
+        <div><kbd>SHIFT</kbd> / <kbd>N</kbd> Nitro</div>
+        <div><kbd>C</kbd> Camera · <kbd>R</kbd> Reset car · <kbd>ESC</kbd> Pause</div>
+      </div>
+      <ul class="tips">
+        <li><b class="c-blue">Drift</b> through corners to charge a turbo: <b class="c-blue">blue</b> → <b class="c-orange">orange</b> → <b class="c-purple">purple</b>. Release for a boost!</li>
+        <li>Drifting, jumping, coins and <b>slipstreaming</b> behind rivals fill your <b class="c-blue">nitro</b>.</li>
+        <li>Hit the glowing <b class="c-blue">boost pads</b> and take <b class="c-orange">ramps</b> for air time bonuses.</li>
+        <li>Every track floats in the sky. Where the <b class="c-orange">blinking edge lights</b> are, there are no guard rails: fall off and you respawn at the last checkpoint.</li>
+        <li>Finish in the <b>top 3</b> to unlock the next track. Win to earn ★★★.</li>
+        <li>Spend coins in the <b>Garage</b> on new cars and upgrades.</li>
+      </ul>
+      <button class="btn primary wide" id="h-close">LET'S RACE</button>
+    </div>
+  </div>
+  <div id="modal-daily" class="modal">
+    <div class="panel modal-box">
+      <h2>DAILY BONUS</h2>
+      <div class="daily-amt"><span class="coin-ico"></span><b id="d-amt">0</b></div>
+      <div class="muted" id="d-streak"></div>
+      <button class="btn primary wide" id="d-ok">COLLECT</button>
+    </div>
+  </div>
+  <div id="toast" class="toast"></div>
+</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

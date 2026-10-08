@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Track Viz (dev)</title>
+<script type="importmap">{ "imports": { "three": "../lib/three/three.module.min.js", "three/addons/": "../lib/three/addons/" } }</script>
+<style>body{background:#111;color:#ddd;font:12px monospace;margin:0} .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px} canvas{background:#1c1c22;width:100%} pre{margin:2px;white-space:pre-wrap}</style>
+</head>
+<body>
+<div class="grid" id="g"></div>
+<script type="module">
+import { TRACKS } from '../src/data/tracks.js';
+import { TrackPath } from '../src/world/trackpath.js';
+const g = document.getElementById('g');
+const report = [];
+for (const def of TRACKS) {
+  const t = new TrackPath(def);
+  const div = document.createElement('div');
+  const c = document.createElement('canvas'); c.width = 400; c.height = 400;
+  div.appendChild(c); const pre = document.createElement('pre'); div.appendChild(pre); g.appendChild(div);
+  const ctx = c.getContext('2d');
+  const b = t.bounds(30);
+  const sc = Math.min(380 / (b.maxX - b.minX), 380 / (b.maxZ - b.minZ));
+  const X = (x) => 10 + (x - b.minX) * sc, Y = (z) => 390 - (z - b.minZ) * sc;
+  // road width
+  ctx.lineCap = 'round';
+  for (let i = 0; i < t.N; i++) {
+    const j = (i + 1) % t.N;
+    const yN = (t.py[i] - b.minY) / Math.max(1, b.maxY - b.minY);
+    ctx.strokeStyle = t.gap[i] ? '#f00' : t.open[i] ? '#f0f' : `hsl(${200 - yN * 200},70%,${t.bridge[i] ? 75 : 50}%)`;
+    ctx.lineWidth = Math.max(2, t.halfWidth * 2 * sc);
+    ctx.beginPath(); ctx.moveTo(X(t.px[i]), Y(t.pz[i])); ctx.lineTo(X(t.px[j]), Y(t.pz[j])); ctx.stroke();
+  }
+  ctx.fillStyle = '#fff'; ctx.font = '10px monospace';
+  for (let u = 0; u < 1; u += 0.05) {
+    const i = t.idxAtU(u);
+    ctx.fillRect(X(t.px[i]) - 1, Y(t.pz[i]) - 1, 3, 3);
+    ctx.fillText(u.toFixed(2), X(t.px[i]) + 4, Y(t.pz[i]) - 4);
+  }
+  const dot = (i, lat, col, r = 4) => { const x = t.px[i] + t.rx[i] * lat, z = t.pz[i] + t.rz[i] * lat; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X(x), Y(z), r, 0, 7); ctx.fill(); };
+  t.boosts.forEach((bb) => dot(bb.i, bb.lat, '#0ff'));
+  t.ramps.forEach((r) => dot(r.i, (r.l0 + r.l1) / 2, '#fa0', 5));
+  t.coins.forEach((cc) => dot(cc.i, cc.lat, '#ff0', 1.5));
+  dot(0, 0, '#0f0', 6);
+  // start direction arrow
+  ctx.strokeStyle = '#0f0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(t.px[0]), Y(t.pz[0])); ctx.lineTo(X(t.px[10]), Y(t.pz[10])); ctx.stroke();
+  // checks
+  let minR = Infinity, minRi = 0;
+  for (let i = 0; i < t.N; i++) { const r = 1 / Math.max(1e-5, Math.abs(t.curv[i])); if (r < minR) { minR = r; minRi = i; } }
+  const probs = [];
+  const clear = t.wallDist * 2 + 4;
+  for (let i = 0; i < t.N; i += 3) for (let j = i + 30; j < t.N; j += 3) {
+    if (t.N - (j - i) < 30) continue;
+    const d = Math.hypot(t.px[i] - t.px[j], t.pz[i] - t.pz[j]);
+    if (d < clear && Math.abs(t.py[i] - t.py[j]) < 8) probs.push(`${(i / t.N).toFixed(2)}~${(j / t.N).toFixed(2)} d=${d.toFixed(0)} dy=${Math.abs(t.py[i] - t.py[j]).toFixed(1)}`);
+  }
+  for (const [i, j] of t.crossings.slice(0, 1)) ctx.strokeRect(X(t.px[i]) - 6, Y(t.pz[i]) - 6, 12, 12);
+  let minSafe = Math.min(...t.safeSpeed);
+  let maxSlope = 0; for (let i = 0; i < t.N; i++) maxSlope = Math.max(maxSlope, Math.abs(t.ty[i]));
+  const txt = `${def.name}: len=${t.length.toFixed(0)}m N=${t.N} minR=${minR.toFixed(0)}@${(minRi / t.N).toFixed(2)} minSafe=${(minSafe * 3.6).toFixed(0)}kmh slope=${maxSlope.toFixed(2)} y=${b.minY.toFixed(0)}..${b.maxY.toFixed(0)} crossings=${t.crossings.length}\n` + (probs.length ? 'CLOSE: ' + probs.slice(0, 6).join(' | ') : 'ok');
+  pre.textContent = txt; report.push(txt);
+}
+window.REPORT = report.join('\n');
+</script>
+</body>
+</html>
