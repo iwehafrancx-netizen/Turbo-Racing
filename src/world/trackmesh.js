@@ -1,22 +1,22 @@
 import * as THREE from 'three';
-import { roadTexture, noiseTexture, wallTexture, checkerTexture, boostTexture, rampTexture, bannerTexture, coinTexture } from './textures.js';
+import { roadTextures, noiseTexture, wallTexture, checkerTexture, boostTexture, rampTexture, bannerTexture, coinTexture } from './textures.js';
 
 const OVERHEAD = {
-  sunrise: { type: 'banner', every: 420 },
-  city: { type: 'neonArch', every: 140 },
-  canyon: { type: 'banner', every: 600 },
-  snow: { type: 'banner', every: 500 },
-  jungle: { type: 'stoneGate', every: 260 },
-  volcano: { type: 'neonArch', every: 320 },
-  harbor: { type: 'banner', every: 480 },
-  glacier: { type: 'neonArch', every: 300 },
-  storm: { type: 'ring', every: 220 },
-  space: { type: 'ring', every: 160 },
+  candy: { type: 'rainbowArch', every: 380 },
+  synth: { type: 'neonArch', every: 160 },
+  prism: { type: 'ring', every: 240 },
+  temple: { type: 'stoneGate', every: 300 },
+  lantern: { type: 'torii', every: 150 },
+  lava: { type: 'neonArch', every: 280 },
+  reef: { type: 'ring', every: 220 },
+  aurora: { type: 'neonArch', every: 260 },
+  thunder: { type: 'ring', every: 240 },
+  cosmic: { type: 'ring', every: 150 },
 };
 
 // Build a triangle strip along the track. `section(i)` returns the cross
 // section for sample i as [[x,y,z,u], ...]. Quads over gaps are skipped.
-function strip(path, section, vScale, { skipGap = true, skipOpen = false, from = 0, count = path.N, closed = true } = {}) {
+function strip(path, section, vScale, { skipGap = true, skipOpen = false, from = 0, count = path.N, closed = false } = {}) {
   const pos = [], uv = [], idx = [];
   let M = 0;
   const rows = closed ? count + 1 : count;
@@ -78,19 +78,21 @@ export class TrackMesh {
       [...this._pt(i, -W), 0],
       [...this._pt(i, W), 1],
     ], 24);
-    const map = roadTexture(road);
+    const rt = roadTextures(road);
     const mat = new THREE.MeshStandardMaterial({
-      map,
-      roughness: road.rough,
-      metalness: road.wet || road.icy ? 0.35 : 0.05,
-      color: '#ffffff',
+      map: rt.map,
+      roughness: road.rough ?? 0.6,
+      metalness: rt.metal,
+      emissiveMap: rt.emissiveMap,
+      emissive: rt.emissiveMap ? '#ffffff' : '#000000',
+      emissiveIntensity: rt.glow,
     });
     const m = new THREE.Mesh(geo, mat);
     m.receiveShadow = true;
     this.group.add(m);
 
     if (S > 0.5) {
-      const sh = noiseTexture(this.theme.shoulder, 4, 22);
+      const sh = noiseTexture(this.theme.shoulder, 4, 10);
       const smat = new THREE.MeshStandardMaterial({ map: sh, roughness: 0.95 });
       for (const side of [-1, 1]) {
         const g = strip(p, (i) => side < 0
@@ -107,11 +109,12 @@ export class TrackMesh {
     const p = this.path, wall = this.theme.wall, D = p.wallDist, h = wall.h;
     const mat = new THREE.MeshStandardMaterial({
       map: wallTexture(wall),
-      roughness: wall.ice ? 0.2 : 0.7,
-      metalness: wall.style === 'rail' ? 0.5 : 0.05,
+      roughness: wall.style === 'glass' ? 0.1 : 0.6,
+      metalness: wall.style === 'rail' ? 0.5 : 0.1,
       side: THREE.DoubleSide,
-      transparent: !!wall.ice,
-      opacity: wall.ice ? 0.75 : 1,
+      transparent: wall.style === 'glass',
+      opacity: wall.style === 'glass' ? 0.45 : 1,
+      depthWrite: wall.style !== 'glass',
     });
     for (const side of [-1, 1]) {
       const g = strip(p, (i) => [
@@ -144,7 +147,7 @@ export class TrackMesh {
   // Thickness under the road so edges never look paper-thin.
   _slab() {
     const p = this.path, D = p.wallDist + 0.05, T = 1.6;
-    const mat = new THREE.MeshStandardMaterial({ color: this.theme.terrain ? '#5a5650' : '#2a2f3a', roughness: 0.9, side: THREE.DoubleSide });
+    const mat = new THREE.MeshStandardMaterial({ color: this.theme.slab || '#2a2f3a', roughness: 0.6, metalness: 0.4, side: THREE.DoubleSide });
     const g = strip(p, (i) => [
       [...this._pt(i, -D, -0.3), 0],
       [...this._pt(i, -D, -T), 0.25],
@@ -193,7 +196,7 @@ export class TrackMesh {
   _hoverPods() {
     const p = this.path, spots = [];
     for (let i = 0; i < p.N; i += 18) if (!p.gap[i]) spots.push(i);
-    const col = this.theme.wall.glow || '#7df9ff';
+    const col = this.theme.wall.glow || this.theme.obstacle?.glow || '#7df9ff';
     const body = new THREE.InstancedMesh(new THREE.CylinderGeometry(2.4, 1.2, 1.6, 10), new THREE.MeshStandardMaterial({ color: '#2a2f3a', metalness: 0.7, roughness: 0.35 }), spots.length * 2);
     const glow = new THREE.InstancedMesh(new THREE.CylinderGeometry(1.1, 0.2, 0.6, 10), new THREE.MeshBasicMaterial({ color: col, toneMapped: false }), spots.length * 2);
     const o = new THREE.Object3D();
@@ -241,18 +244,34 @@ export class TrackMesh {
   }
 
   _start() {
-    const p = this.path, D = p.wallDist;
-    // checkered line
-    const g = strip(p, (i) => [
-      [...this._pt(i, -p.halfWidth, 0.03), 0],
-      [...this._pt(i, p.halfWidth, 0.03), 1],
-    ], 4, { from: 0, count: 2, closed: false });
-    const cm = new THREE.MeshStandardMaterial({ map: checkerTexture(), roughness: 0.8 });
-    this.group.add(new THREE.Mesh(g, cm));
-    this.group.add(this._gantry(0, 'TURBO RACING', 7.5));
+    const p = this.path;
+    const line = (s) => {
+      const i = Math.round(s / p.spacing);
+      const g = strip(p, (k) => [
+        [...this._pt(k, -p.halfWidth, 0.03), 0],
+        [...this._pt(k, p.halfWidth, 0.03), 1],
+      ], 4, { from: i, count: 2 });
+      this.group.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: checkerTexture(), roughness: 0.8 })));
+      return i;
+    };
+    this.group.add(this._gantry(line(p.startS), 'START', 7.5));
+    this.group.add(this._gantry(line(p.finishS), 'FINISH', 8.5, true));
+    this._endCaps();
   }
 
-  _gantry(i, text, height) {
+  // Barriers closing both ends of the course.
+  _endCaps() {
+    const p = this.path, D = p.wallDist;
+    const mat = new THREE.MeshStandardMaterial({ map: wallTexture({ style: 'stripes', a: '#ffd23f', b: '#222222' }), roughness: 0.6 });
+    for (const i of [0, p.N - 1]) {
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(D * 2 + 1, 2.4, 1), mat);
+      cap.position.set(p.px[i], p.py[i] + 0.9, p.pz[i]);
+      cap.rotation.y = p.heading[i];
+      this.group.add(cap);
+    }
+  }
+
+  _gantry(i, text, height, finish = false) {
     const p = this.path, D = p.wallDist;
     const grp = new THREE.Group();
     const y = p.py[i];
@@ -265,8 +284,8 @@ export class TrackMesh {
       post.castShadow = true;
       grp.add(post);
     }
-    const accent = this.theme.wall.glow || this.theme.road.curbA;
-    const beamMat = new THREE.MeshStandardMaterial({ map: bannerTexture(text, '#101018', '#ffffff', accent), emissive: '#ffffff', emissiveIntensity: this.theme.night ? 0.6 : 0.15 });
+    const accent = this.theme.wall.glow || this.theme.obstacle?.b || '#ff3b6b';
+    const beamMat = new THREE.MeshStandardMaterial({ map: bannerTexture(text, finish ? '#111' : '#101018', finish ? '#ffd23f' : '#ffffff', accent), emissive: '#ffffff', emissiveIntensity: this.theme.night ? 0.6 : 0.2 });
     beamMat.emissiveMap = beamMat.map;
     const beam = new THREE.Mesh(new THREE.BoxGeometry((D + 1.2) * 2, 2.4, 0.6), [postMat, postMat, postMat, postMat, beamMat, beamMat]);
     beam.position.y = height;
@@ -428,6 +447,34 @@ export class TrackMesh {
         v.position.set(-D + k * (D / 3), 8.5 - (k % 3) * 0.5, 1.2);
         grp.add(v);
       }
+    } else if (type === 'rainbowArch') {
+      const cols = ['#ff4f6b', '#ff9f3f', '#ffe14f', '#5fe39a', '#4fb3ff', '#9b7bff'];
+      cols.forEach((cc, k) => {
+        grp.add(new THREE.Mesh(new THREE.TorusGeometry(D + 2 + k * 0.9, 0.45, 8, 48, Math.PI), new THREE.MeshBasicMaterial({ color: cc, toneMapped: false })));
+      });
+      for (const s of [-1, 1]) {
+        const cloud = new THREE.Mesh(new THREE.IcosahedronGeometry(3.2, 1), new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#ffe6f4', emissiveIntensity: 0.5, flatShading: true }));
+        cloud.position.set(s * (D + 4.3), 0.5, 0);
+        cloud.scale.set(1.3, 0.8, 1);
+        grp.add(cloud);
+      }
+    } else if (type === 'torii') {
+      const red = new THREE.MeshStandardMaterial({ color: '#c8161d', roughness: 0.4, emissive: '#5a0000', emissiveIntensity: 0.4 });
+      const black = new THREE.MeshStandardMaterial({ color: '#141010', roughness: 0.5 });
+      for (const s of [-1, 1]) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 11, 12), red);
+        post.position.set(s * (D + 1.2), 5.5, 0);
+        grp.add(post);
+      }
+      const kasagi = new THREE.Mesh(new THREE.BoxGeometry((D + 4) * 2, 1, 1.6), black);
+      kasagi.position.y = 11.4;
+      grp.add(kasagi);
+      const nuki = new THREE.Mesh(new THREE.BoxGeometry((D + 2.4) * 2, 0.8, 1), red);
+      nuki.position.y = 9.4;
+      grp.add(nuki);
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 8), new THREE.MeshBasicMaterial({ color: '#ffcf6b', toneMapped: false }));
+      lamp.position.y = 8;
+      grp.add(lamp);
     } else if (type === 'ring') {
       const ring = new THREE.Mesh(
         new THREE.TorusGeometry(D + 2.5, 0.5, 10, 48),

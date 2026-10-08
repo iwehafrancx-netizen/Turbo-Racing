@@ -25,13 +25,15 @@ export class Race {
     this.cam = new ChaseCam(this.camera, this.path);
     this.cam.setMode(game.save.data.settings.camera || 0);
     this.fx = new Effects(this.scene, this.theme);
-    this.totalLaps = this.def.laps;
+    this.obstacles = this.world.obstacles;
+    this.raceLen = this.path.finishS - this.path.startS;
     this.time = -COUNTDOWN; // race clock; negative during countdown
     this.state = 'intro';
     this.paused = false;
     this.acc = 0;
     this.clock = 0;
-    this.stats = { coins: 0, drift: 0, overtakes: 0, wallHits: 0, airTime: 0, perfectStart: false };
+    this.stats = { coins: 0, drift: 0, overtakes: 0, wallHits: 0, airTime: 0, perfectStart: false, obstacleHits: 0 };
+    this.milestone = 0;
     this.driftPts = 0;
     this._buildCars();
     this.lastPlace = 6;
@@ -55,7 +57,8 @@ export class Race {
     const slots = 6;
     const slotPos = (k) => {
       const row = Math.floor(k / 2);
-      return { i: p.wrap(p.N - 4 - row * 5 - (k % 2) * 2), lat: (k % 2 ? 1 : -1) * p.halfWidth * 0.42 };
+      const start = Math.round(p.startS / p.spacing);
+      return { i: p.wrap(start - 4 - row * 5 - (k % 2) * 2), lat: (k % 2 ? 1 : -1) * p.halfWidth * 0.42 };
     };
     // player starts at the back of the grid: overtaking is the fun part
     for (let k = 0; k < slots; k++) {
@@ -72,7 +75,9 @@ export class Race {
         const st = carStats(cdef, { engine: lvl, turbo: lvl, grip: lvl });
         car = new Vehicle(g.models.get(cid), st, p, { name: names[k], night });
         const skill = this.def.aiSkill * (0.96 + k * 0.012);
-        this.ais.push(new AIDriver(car, p, skill, this.idx * 13 + k));
+        const ai = new AIDriver(car, p, skill, this.idx * 13 + k);
+        ai.obstacles = this.world.obstacles;
+        this.ais.push(ai);
       }
       const s = slotPos(k);
       car.initRace(s.i, s.lat);
@@ -148,6 +153,7 @@ export class Race {
     }
 
     // ----- physics (fixed step) -----
+    this.obstacles.update(this.clock);
     const ctrl = this._playerControls(dt, input);
     this.acc += dt;
     let steps = 0;
@@ -194,15 +200,19 @@ export class Race {
       const car = ai.car;
       const c = racing ? ai.update(dt, this.cars, this.player, this.time) : { throttle: 0, brake: 0, steer: 0, drift: false, nitro: false };
       car.step(dt, c);
-      if (racing) car.updateProgress(this.time, this.totalLaps);
+      this.obstacles.collide(car, this.clock);
+      if (racing) car.updateProgress(this.time);
       if (car.fallen) car.respawn();
     }
     const ev = this.player.step(dt, ctrl);
-    this._playerEvents(ev);
-    if (racing) {
-      const lapT = this.player.updateProgress(this.time, this.totalLaps);
-      if (lapT !== null) this._onLap(lapT);
+    const hit = this.obstacles.collide(this.player, this.clock);
+    if (hit > 3 && this.state === 'racing') {
+      this.stats.obstacleHits++;
+      this.game.ui.hud.flash('BONK!', '#ff6b6b', 0.6, true);
+      if (this.autopilot === undefined) this.player.hitT = 0.6;
     }
+    this._playerEvents(ev);
+    if (racing) this.player.updateProgress(this.time);
     collideCars(this.cars, (a, b, imp) => {
       if (a === this.player || b === this.player) {
         if (imp > 4) {
@@ -241,18 +251,12 @@ export class Race {
     }
   }
 
-  _onLap(t) {
+  // Progress call-outs on the way to the finish.
+  _milestones() {
     const p = this.player, ui = this.game.ui, a = this.game.audio;
-    if (p.finished) return;
-    if (p.lap === this.totalLaps) {
-      ui.hud.banner('FINAL LAP', '#ffd23f');
-      a.play('finalLap');
-      a.setMusicIntensity(1.5);
-    } else {
-      ui.hud.banner(`LAP ${p.lap} / ${this.totalLaps}`, '#ffffff');
-      a.play('lap');
-    }
-    if (t <= p.bestLap) ui.hud.flash(`BEST LAP ${t.toFixed(2)}s`, '#7dff9a', 1.2);
+    const f = p.progress / this.raceLen;
+    if (this.milestone === 0 && f > 0.5) { this.milestone = 1; ui.hud.banner('HALFWAY!', '#ffffff'); a.play('lap'); }
+    if (this.milestone === 1 && f > 0.85) { this.milestone = 2; ui.hud.banner('FINAL STRETCH', '#ffd23f'); a.play('finalLap'); a.setMusicIntensity(1.5); }
   }
 
   _frameLogic(dt, acts) {
@@ -286,16 +290,14 @@ export class Race {
         this.fx.coinBurst(tm.coinPos[k]);
       }
     }
-    // coins come back each lap so every lap has something to chase
-    if (p.lap !== this.coinLap) { this.coinLap = p.lap; tm.resetCoins(); }
+    if (this.state === 'racing') this._milestones();
 
     // slipstream
     let slip = false;
     if (this.state === 'racing' && p.vF > 25) {
       for (const o of this.cars) {
         if (o === p) continue;
-        let ds = o.proj.s - p.proj.s;
-        if (ds < -path.length / 2) ds += path.length;
+        const ds = o.proj.s - p.proj.s;
         if (ds > 3 && ds < 20 && Math.abs(o.proj.lat - p.proj.lat) < 2.4) { slip = true; break; }
       }
     }
@@ -367,13 +369,14 @@ export class Race {
     const place = order.indexOf(p) + 1;
     this.cam.finish(p);
     this.autopilot = new AIDriver(p, this.path, 0.85, 99);
+    this.autopilot.obstacles = this.obstacles;
     a.nitroStop();
     if (place === 1) { a.play('win'); this.game.platform.happytime(); } else if (place <= 3) a.play('win'); else a.play('lose');
     ui.hud.finish(place);
     a.setMusicIntensity(0.6);
 
     // estimate unfinished rivals' times from their pace so far
-    const L = this.path.length * this.totalLaps;
+    const L = this.raceLen;
     const board = order.map((c) => {
       let t = c.finishTime;
       if (!c.finished) {
@@ -381,7 +384,7 @@ export class Race {
         t = this.time * (L / done) + 0.5 + Math.random();
         t = Math.max(t, p.finishTime + 0.3);
       }
-      return { name: c.name, car: c.def.name, time: t, isPlayer: c === p, bestLap: c.bestLap };
+      return { name: c.name, car: c.def.name, time: t, isPlayer: c === p };
     });
     board.sort((x, y) => x.time - y.time);
     const truePlace = board.findIndex((b) => b.isPlayer) + 1;
@@ -395,9 +398,10 @@ export class Race {
     if (this.stats.airTime > 1) rewards.push({ label: `Air time ${this.stats.airTime.toFixed(1)}s`, coins: Math.round(this.stats.airTime * 10) });
     if (this.stats.perfectStart) rewards.push({ label: 'Perfect start', coins: 50 });
     if (this.stats.wallHits === 0) rewards.push({ label: 'Clean race (no wall hits)', coins: 150 });
+    if (this.obstacles.list.length && this.stats.obstacleHits === 0) rewards.push({ label: 'Untouchable (dodged every obstacle)', coins: 120 });
     const total = rewards.reduce((s, r) => s + r.coins, 0);
-    const rec = this.game.save.recordRace(this.idx, truePlace, p.finishTime, p.bestLap, total);
-    this.results = { trackIdx: this.idx, place: truePlace, time: p.finishTime, bestLap: p.bestLap, board, rewards, total, ...rec };
+    const rec = this.game.save.recordRace(this.idx, truePlace, p.finishTime, Infinity, total);
+    this.results = { trackIdx: this.idx, place: truePlace, time: p.finishTime, board, rewards, total, ...rec };
   }
 
   _audio() {

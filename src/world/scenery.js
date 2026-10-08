@@ -109,6 +109,157 @@ const BUILD = {
     v.std.push(...isleBase(230, 140, '#1e1716', '#2b211f'));
     return v;
   },
+  // ---------- creative sky-world props ----------
+  candyIsland() {
+    const std = isleBase(14, 20, '#ffb3d9', '#fff4fb');
+    std.push(...moveAll(BUILD.lollipop().std, 3, 0.4, 2, 1.6), ...moveAll(BUILD.lollipop().std, -4, 0.4, -3, 1.2));
+    std.push(...moveAll(BUILD.gumdrop().std, 5, 0.4, -5, 1.4), ...moveAll(BUILD.gumdrop().std, -6, 0.4, 4));
+    const drip = cyl(14.2, 13, 2.4, 10); drip.translate(0, -1.4, 0);
+    std.push(col(drip, '#ff8fc7'));
+    return { std };
+  },
+  lollipop() {
+    const std = [col(T(cyl(0.15, 0.15, 5, 6), 0, 2.5, 0), '#ffffff')];
+    const c = ['#ff4f8b', '#4fb3ff', '#ffe14f', '#6fe39a', '#c9a2ff'][Math.floor(R() * 5)];
+    const disc = cyl(1.4, 1.4, 0.4, 16); disc.rotateX(Math.PI / 2); disc.translate(0, 5.6, 0);
+    const swirl = new THREE.TorusGeometry(0.8, 0.16, 6, 16); swirl.translate(0, 5.6, 0.22);
+    std.push(col(disc, c), col(swirl, '#ffffff'));
+    return { std };
+  },
+  gumdrop() {
+    const c = ['#ff6fa8', '#ffd36e', '#7fe8b8', '#8fcfff', '#c9a2ff'][Math.floor(R() * 5)];
+    const g = sph(1.2, 10, 6); g.scale(1, 1.1, 1); g.translate(0, 0.9, 0);
+    return { std: [col(g, c)] };
+  },
+  neonPalm() {
+    const std = [col(T(cyl(0.18, 0.3, 9, 6), 0, 4.5, 0), '#1a0838')];
+    const glow = [];
+    for (let k = 0; k < 7; k++) {
+      const f = box(4.5, 0.12, 0.6); f.translate(2.2, 0, 0); f.rotateZ(-0.45); f.translate(0, 9, 0); f.rotateY((k / 7) * Math.PI * 2);
+      glow.push(col(f, k % 2 ? '#ff2bd6' : '#00f0ff'));
+    }
+    glow.push(col(T(cyl(0.32, 0.32, 0.2, 8), 0, 4.5, 0), '#00f0ff'));
+    return { std, glow };
+  },
+  wirePyramid() {
+    const s = 26, h = 22, glow = [], std = [];
+    const p = cone(s * 0.7, h, 4); p.rotateY(Math.PI / 4); p.translate(0, h / 2, 0);
+    std.push(col(p, '#160628'));
+    const edge = (x1, y1, z1, x2, y2, z2, c) => {
+      const L = Math.hypot(x2 - x1, y2 - y1, z2 - z1);
+      const b = box(1.6, L, 1.6);
+      const m = new THREE.Matrix4().lookAt(new THREE.Vector3(x1, y1, z1), new THREE.Vector3(x2, y2, z2), new THREE.Vector3(0, 1, 0));
+      b.rotateX(Math.PI / 2); b.applyMatrix4(m); b.translate((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2);
+      glow.push(col(b, c));
+    };
+    const r = s * 0.7 * Math.SQRT1_2;
+    const corners = [[r, 0, r], [-r, 0, r], [-r, 0, -r], [r, 0, -r]];
+    corners.forEach((c, k) => {
+      const n = corners[(k + 1) % 4];
+      edge(c[0], 0.2, c[2], n[0], 0.2, n[2], '#ff2bd6');
+      edge(c[0], 0, c[2], 0, h, 0, '#00f0ff');
+    });
+    return { std, glow };
+  },
+  crystalIsland() {
+    const std = isleBase(13, 22, '#5b4a9e', '#e9e0ff');
+    const ice = [];
+    for (let k = 0; k < 5; k++) {
+      const g = new THREE.OctahedronGeometry(1.4 + R() * 1.4, 0); g.scale(1, 3 + R() * 2, 1);
+      g.rotateZ((R() - 0.5) * 0.6); g.translate((R() - 0.5) * 16, 4, (R() - 0.5) * 16);
+      ice.push(col(g, ['#b48cff', '#7df9ff', '#ff9ff3', '#ffffff'][k % 4]));
+    }
+    return { std, ice };
+  },
+  crystalSmall() {
+    const g = new THREE.OctahedronGeometry(0.7, 0); g.scale(1, 2.6, 1); g.translate(0, 1.6, 0);
+    const g2 = new THREE.OctahedronGeometry(0.45, 0); g2.scale(1, 2, 1); g2.rotateZ(0.5); g2.translate(0.6, 0.9, 0);
+    return { ice: [col(g, '#b48cff'), col(g2, '#7df9ff')] };
+  },
+  templeIsland() {
+    const std = isleBase(20, 28, '#b9a684', '#f4efe6');
+    std.push(col(T(box(24, 1.6, 16), 0, 0.8, 0), '#e8dfcf'));
+    for (let i = 0; i < 6; i++) for (const zz of [-6, 6]) std.push(col(T(cyl(0.8, 0.9, 9, 10), -10 + i * 4, 6, zz), '#f4efe6'));
+    std.push(col(T(box(24, 1.2, 15), 0, 11, 0), '#e8dfcf'));
+    const roof = cone(14, 4, 4); roof.rotateY(Math.PI / 4); roof.scale(1.15, 1, 0.75); roof.translate(0, 13.5, 0);
+    std.push(col(roof, '#d9a521'));
+    return { std, glow: [col(T(box(24.4, 0.4, 15.4), 0, 11.8, 0), '#ffd86b')] };
+  },
+  goldColumn() {
+    return {
+      std: [col(T(cyl(0.5, 0.6, 5, 10), 0, 2.5, 0), '#f4efe6'), col(T(box(1.6, 0.4, 1.6), 0, 5.2, 0), '#d9a521'), col(T(box(1.6, 0.4, 1.6), 0, 0.2, 0), '#d9a521')],
+      glow: [col(T(cone(0.4, 1.1, 6), 0, 6, 0), '#ffb347')],
+    };
+  },
+  cherryIsland() {
+    const std = isleBase(13, 20, '#4a3040', '#5f8a3a');
+    for (const [x, z, s] of [[3, 2, 1.2], [-4, -2, 1], [-1, 5, 0.8]]) {
+      std.push(col(T(cyl(0.3 * s, 0.5 * s, 5 * s, 6), x, 2.5 * s, z), '#4a2a2a'));
+      std.push(col(jitter(T(ico(2.8 * s, 1), x, 5.8 * s, z), 0.8), '#ffb7d5'), col(jitter(T(ico(2 * s, 1), x + 1.5 * s, 5 * s, z + 1), 0.6), '#ff9fc6'));
+    }
+    const glow = [col(T(box(0.8, 1.1, 0.8), 6, 1.2, -4), '#ffcf6b')];
+    return { std, glow };
+  },
+  torii() {
+    const std = isleBase(10, 16, '#4a3040', '#5f8a3a');
+    for (const s of [-1, 1]) std.push(col(T(cyl(0.45, 0.5, 8, 10), s * 4, 4, 0), '#c8161d'));
+    std.push(col(T(box(11.5, 0.8, 1.2), 0, 8.2, 0), '#141010'), col(T(box(9.5, 0.6, 0.8), 0, 6.8, 0), '#c8161d'));
+    return { std };
+  },
+  lanternPost() {
+    return {
+      std: [col(T(cyl(0.12, 0.15, 3.6, 6), 0, 1.8, 0), '#2a0a0e'), col(T(box(1.2, 0.15, 0.2), 0.5, 3.6, 0), '#2a0a0e')],
+      glow: [col(T(cyl(0.45, 0.45, 0.9, 8), 1, 3, 0), '#ff8a3d'), col(T(cyl(0.48, 0.48, 0.12, 8), 1, 3.5, 0), '#c8161d')],
+    };
+  },
+  brazier() {
+    return {
+      std: [col(T(cyl(0.2, 0.35, 2.4, 6), 0, 1.2, 0), '#2a2422'), col(T(cyl(0.9, 0.5, 0.7, 8), 0, 2.6, 0), '#3a3030')],
+      glow: [col(T(cone(0.7, 1.6, 6), 0, 3.6, 0), '#ff6a1a'), col(T(cone(0.4, 1.2, 6), 0, 3.5, 0), '#ffd36e')],
+    };
+  },
+  coral() {
+    const c = ['#ff7f6b', '#ff9fc6', '#ffd36e', '#b07aff'][Math.floor(R() * 4)];
+    const std = [];
+    for (let k = 0; k < 5; k++) {
+      const b = cyl(0.12, 0.25, 2 + R() * 1.6, 5); b.translate(0, 1, 0); b.rotateZ((R() - 0.5) * 1.2); b.rotateY(R() * 6);
+      std.push(col(b, c));
+    }
+    std.push(col(T(sph(0.6, 8, 6), 0, 0.3, 0), c));
+    return { std };
+  },
+  reefIsland() {
+    const std = isleBase(14, 22, '#e8d9b0', '#f4ead0');
+    for (let k = 0; k < 6; k++) std.push(...moveAll(BUILD.coral().std, (R() - 0.5) * 18, 0.4, (R() - 0.5) * 18, 2 + R() * 1.5));
+    const shell = sph(2, 10, 8); shell.scale(1.3, 0.8, 1); shell.translate(4, 1.2, -4);
+    std.push(col(shell, '#ffc4b0'));
+    return { std, glow: [col(T(sph(0.8, 8, 6), 4, 2, -2.6), '#ffffff')] };
+  },
+  iceSpikeSmall() {
+    return { ice: [col(T(cone(0.6, 3.4, 5), 0, 1.7, 0), '#bfe4ff'), col(T(cone(0.4, 2, 5), 0.6, 1, 0.3), '#d0b7ff')] };
+  },
+  teslaCoil() {
+    return {
+      std: [col(T(cyl(0.3, 0.6, 6, 8), 0, 3, 0), '#3a4050'), col(new THREE.TorusGeometry(1, 0.3, 6, 16).rotateX(Math.PI / 2).translate(0, 4.5, 0), '#8892a6')],
+      glow: [col(T(sph(0.7, 10, 8), 0, 6.6, 0), '#4fc3ff')],
+    };
+  },
+  citadel() {
+    const std = isleBase(40, 50, '#3a4050', '#4a5262');
+    std.push(col(T(box(40, 14, 40), 0, 7, 0), '#5a6478'));
+    for (const [x, z] of [[-18, -18], [18, -18], [-18, 18], [18, 18]]) {
+      std.push(col(T(cyl(5, 6, 34, 8), x, 17, z), '#4a5262'), col(T(cone(6.5, 12, 8), x, 40, z), '#2a2f3c'));
+    }
+    std.push(col(T(cyl(8, 10, 46, 8), 0, 23, 0), '#4a5262'), col(T(cone(10, 18, 8), 0, 55, 0), '#2a2f3c'));
+    return { std, glow: [col(T(sph(3, 10, 8), 0, 66, 0), '#4fc3ff'), col(T(box(40.4, 1, 40.4), 0, 12, 0), '#fbbf24')] };
+  },
+  neonPost() {
+    return { std: [col(T(box(0.3, 3.4, 0.3), 0, 1.7, 0), '#1a0838')], glow: [col(T(box(0.34, 2.6, 0.34), 0, 2, 0), R() < 0.5 ? '#ff2bd6' : '#00f0ff')] };
+  },
+  starPost() {
+    const s = new THREE.OctahedronGeometry(0.9, 0); s.scale(1, 1, 0.4); s.translate(0, 3.6, 0);
+    return { std: [col(T(cyl(0.1, 0.12, 3, 6), 0, 1.5, 0), '#2a1f55')], glow: [col(s, ['#ffe14f', '#ff4fd8', '#4fe8ff'][Math.floor(R() * 3)])] };
+  },
   skyRock() {
     return { std: [col(jitter(ico(3, 0), 1.6), '#7a6a5a')] };
   },
@@ -328,6 +479,10 @@ const RULES = {
   islandJungle: [35, 450, 0.7, 1.7, 'sky'], islandIce: [35, 450, 0.7, 1.7, 'sky'], islandLava: [35, 450, 0.7, 1.7, 'sky'],
   islandMesa: [40, 480, 0.7, 1.8, 'sky'], islandTemple: [90, 380, 1, 1.3, 'sky'], iceSpireIsle: [450, 650, 1, 1, 'sky'],
   volcanoIsle: [450, 700, 1, 1, 'sky'], skyRock: [20, 400, 0.5, 3, 'sky'], airship: [50, 500, 1, 1.5, 'sky'],
+  candyIsland: [35, 450, 0.7, 1.7, 'sky'], gumdrop: [30, 400, 1.5, 4, 'sky'], neonPalm: [25, 420, 1, 2.2, 'sky'],
+  wirePyramid: [120, 500, 0.8, 1.6, 'sky'], crystalIsland: [35, 450, 0.7, 1.7, 'sky'], templeIsland: [60, 450, 0.7, 1.4, 'sky'],
+  cherryIsland: [35, 450, 0.7, 1.7, 'sky'], torii: [40, 400, 0.8, 1.4, 'sky'], reefIsland: [35, 450, 0.7, 1.7, 'sky'],
+  citadel: [180, 520, 0.9, 1.2, 'sky'],
   asteroid: [20, 500, 0.4, 3, 'space'], planet: [700, 1300, 60, 190, 'space'], ring: [60, 400, 0.8, 2, 'space'],
 };
 
@@ -359,6 +514,7 @@ export class Scenery {
       else this._scatter(type, type === 'volcano' || type === 'planet' ? count : Math.max(1, Math.round(count * mult)));
     }
     this._backdrop(theme.backdrop);
+    if (theme.edgeDecor) this._edgeDecor(...theme.edgeDecor);
   }
 
   _instanced(type, matrices, colors) {
@@ -600,6 +756,26 @@ export class Scenery {
       }
     }
     this._instanced('streetlight', mats);
+  }
+
+  // Decorations lining both sides of the track (lollipops, lanterns, ...).
+  _edgeDecor(type, every) {
+    const p = this.path, mats = [], cols = [];
+    const o = new THREE.Object3D();
+    const step = Math.round(every / p.spacing);
+    for (let i = step; i < p.N - step; i += step) {
+      if (p.gap[i]) continue;
+      for (const side of [-1, 1]) {
+        const lat = side * (p.wallDist + 1.4);
+        o.position.set(p.px[i] + p.rx[i] * lat, p.surfaceY(i, 0, lat) - 0.3, p.pz[i] + p.rz[i] * lat);
+        o.rotation.set(0, p.heading[i] + (side > 0 ? Math.PI : 0), 0);
+        o.scale.setScalar(1);
+        o.updateMatrix();
+        mats.push(o.matrix.clone());
+        cols.push(new THREE.Color(1, 1, 1));
+      }
+    }
+    if (mats.length) this._instanced(type, mats, cols);
   }
 
   // Big silhouettes on the horizon to give each world depth.

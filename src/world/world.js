@@ -7,6 +7,8 @@ import { Terrain } from './terrain.js';
 import { TrackMesh } from './trackmesh.js';
 import { Scenery } from './scenery.js';
 import { Atmosphere } from './sky.js';
+import { SkyFX } from './skyfx.js';
+import { Obstacles } from '../game/obstacles.js';
 
 let envTex = null;
 export function getEnvMap(renderer) {
@@ -62,7 +64,9 @@ export class World {
     this.track = new TrackMesh(this.path, theme, def.theme, this.terrain);
     this.scenery = new Scenery(this.path, theme, this.terrain, quality, trackIdx + 1);
     this.atmo = new Atmosphere(theme, quality, this.path);
-    scene.add(this.terrain.group, this.track.group, this.scenery.group, this.atmo.group);
+    this.skyfx = new SkyFX(theme, this.path, quality, this.atmo);
+    this.obstacles = new Obstacles(this.path, theme);
+    scene.add(this.terrain.group, this.track.group, this.scenery.group, this.atmo.group, this.skyfx.group, this.obstacles.group);
     this._skyEnvironment(renderer);
   }
 
@@ -97,6 +101,7 @@ export class World {
     this.hemi.intensity = this.theme.hemi[2] + this.atmo.flash * 4;
     this.track.update(dt, time);
     this.atmo.update(dt, camera, time);
+    this.skyfx.update(dt, time);
   }
 
   dispose() {

@@ -37,7 +37,7 @@ void main() {
   }
   // nebula
   if (nebula > 0.0) {
-    vec2 q = vec2(atan(d.z, d.x) * 1.5, d.y * 3.0);
+    vec2 q = vec2(d.x * 2.4 + d.z * 1.3, d.y * 3.0 + d.z * 1.7); // seamless (no atan wrap)
     float n = fbm(q * 1.4 + vec2(time * 0.005, 0.0));
     float m = fbm(q * 2.3 - 3.0);
     col += vec3(0.55, 0.15, 0.75) * pow(n, 2.5) * 1.2 * nebula + vec3(0.1, 0.5, 0.8) * pow(m, 3.0) * 0.9 * nebula;
@@ -64,6 +64,10 @@ const PARTICLES = {
   fireflies: { count: 400, color: '#e8ff7a', size: 0.4, fall: 0.2, drift: 1.6, box: 70, opacity: 0.9, additive: true },
   dust: { count: 500, color: '#f2c890', size: 0.6, fall: 0.3, drift: 5, box: 80, opacity: 0.35 },
   stardust: { count: 1200, color: '#c9b6ff', size: 0.5, fall: 0, drift: 0.6, box: 120, opacity: 0.9, additive: true },
+  sparkles: { count: 600, color: '#ffffff', size: 0.45, fall: 0.4, drift: 2, box: 80, opacity: 0.9, additive: true },
+  goldDust: { count: 600, color: '#ffd86b', size: 0.35, fall: -0.3, drift: 1.5, box: 80, opacity: 0.9, additive: true },
+  petals: { count: 900, color: '#ffb7d5', size: 0.55, fall: 1.6, drift: 3, box: 80, opacity: 0.95 },
+  bubbles: { count: 600, color: '#c8ffff', size: 0.6, fall: -1.5, drift: 1.2, box: 80, opacity: 0.6, additive: true },
 };
 
 export class Atmosphere {
@@ -195,7 +199,7 @@ export class Atmosphere {
       obj = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: pc.color, transparent: true, opacity: pc.opacity }));
     } else {
       obj = new THREE.Points(geo, new THREE.PointsMaterial({
-        color: pc.color, size: pc.size, map: glowTexture(), transparent: true, opacity: pc.opacity,
+        color: pc.color, size: pc.size, map: glowTexture(), transparent: true, opacity: pc.opacity, toneMapped: false,
         depthWrite: false, blending: pc.additive ? THREE.AdditiveBlending : THREE.NormalBlending, sizeAttenuation: true,
       }));
     }
@@ -249,6 +253,9 @@ export class Atmosphere {
       x = wrap(x - cx, B * 2) + cx;
       y = wrap(y - cy, B) + cy;
       z = wrap(z - cz, B * 2) + cz;
+      // keep particles out of the camera's face (they'd fill the screen)
+      const ddx = x - cx, ddy = y - cy, ddz = z - cz;
+      if (ddx * ddx + ddy * ddy + ddz * ddz < 25) y += 10;
       if (pc.lines) {
         P[i * 6] = x; P[i * 6 + 1] = y; P[i * 6 + 2] = z;
         P[i * 6 + 3] = x + 0.05; P[i * 6 + 4] = y + 1.1; P[i * 6 + 5] = z;

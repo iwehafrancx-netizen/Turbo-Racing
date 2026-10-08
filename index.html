@@ -112,9 +112,9 @@
   <div id="hud" class="hidden">
     <div class="hud-tl">
       <div class="hud-pos"><b id="h-pos">6</b><sup id="h-suf">th</sup><span>/6</span></div>
-      <div class="hud-lap">LAP <b id="h-lap">1</b>/<span id="h-laps">3</span></div>
+      <div class="hud-lap" id="h-dist">0.0 / 2.0 KM</div>
       <div class="hud-time" id="h-time">0:00.000</div>
-      <div class="hud-best">BEST <span id="h-best">--</span></div>
+      <div class="hud-best">RECORD <span id="h-best">--</span></div>
       <ol id="h-board" class="hud-board"></ol>
     </div>
     <div class="hud-tr">
@@ -137,6 +137,11 @@
         <div class="sp-num"><b id="h-speed">0</b><span>KM/H</span></div>
         <div class="ni-label" id="h-nitro-lbl">NITRO</div>
       </div>
+    </div>
+    <div class="h-progress">
+      <span class="hp-label">START</span>
+      <div class="hp-bar"><i id="hp-fill"></i><div id="hp-dots"></div></div>
+      <span class="hp-flag"></span>
     </div>
     <div class="hud-center">
       <div id="h-count" class="h-count"></div>
@@ -204,6 +209,7 @@
         <div><kbd>C</kbd> Camera · <kbd>R</kbd> Reset car · <kbd>ESC</kbd> Pause</div>
       </div>
       <ul class="tips">
+        <li>Each race runs from the <b>START</b> gate to the <b>FINISH</b> gate. Dodge the <b class="c-orange">moving obstacles</b>: sliding blocks, spinning bars, swinging hammers and slamming pistons.</li>
         <li><b class="c-blue">Drift</b> through corners to charge a turbo: <b class="c-blue">blue</b> → <b class="c-orange">orange</b> → <b class="c-purple">purple</b>. Release for a boost!</li>
         <li>Drifting, jumping, coins and <b>slipstreaming</b> behind rivals fill your <b class="c-blue">nitro</b>.</li>
         <li>Hit the glowing <b class="c-blue">boost pads</b> and take <b class="c-orange">ramps</b> for air time bonuses.</li>

@@ -125,13 +125,16 @@ export class UI {
     // mirrored X so the shape matches the in-race minimap
     const tx = (v) => left + (maxX - v) * sc, tz = (v) => top + (maxZ - v) * sc;
     x.lineJoin = 'round'; x.lineCap = 'round';
-    const trace = () => { x.beginPath(); for (let k = 0; k <= p.N; k += 4) { const j = k % p.N; k ? x.lineTo(tx(p.px[j]), tz(p.pz[j])) : x.moveTo(tx(p.px[j]), tz(p.pz[j])); } x.closePath(); };
+    const trace = () => { x.beginPath(); for (let k = 0; k < p.N; k += 4) { k ? x.lineTo(tx(p.px[k]), tz(p.pz[k])) : x.moveTo(tx(p.px[k]), tz(p.pz[k])); } };
     x.strokeStyle = 'rgba(0,0,0,0.45)'; x.lineWidth = 12; trace(); x.stroke();
-    x.strokeStyle = th.wall.glow || th.road.curbA; x.lineWidth = 7; x.shadowColor = x.strokeStyle; x.shadowBlur = 12; trace(); x.stroke();
+    x.strokeStyle = th.wall.glow || th.wall.a; x.lineWidth = 7; x.shadowColor = x.strokeStyle; x.shadowBlur = 12; trace(); x.stroke();
     x.shadowBlur = 0;
     x.strokeStyle = 'rgba(255,255,255,0.9)'; x.lineWidth = 2.5; trace(); x.stroke();
     x.fillStyle = '#fff';
-    x.beginPath(); x.arc(tx(p.px[0]), tz(p.pz[0]), 5, 0, 7); x.fill();
+    const si = Math.round(p.startS / p.spacing), fi = Math.round(p.finishS / p.spacing);
+    x.fillStyle = '#7dff9a'; x.beginPath(); x.arc(tx(p.px[si]), tz(p.pz[si]), 6, 0, 7); x.fill();
+    x.fillStyle = '#fff'; x.fillRect(tx(p.px[fi]) - 6, tz(p.pz[fi]) - 6, 12, 12);
+    x.fillStyle = '#111'; x.fillRect(tx(p.px[fi]) - 6, tz(p.pz[fi]) - 6, 6, 6); x.fillRect(tx(p.px[fi]), tz(p.pz[fi]), 6, 6);
   }
 
   // ---------- garage ----------
@@ -309,7 +312,8 @@ export class UI {
     place.innerHTML = `${r.place}<sup>${ordinal(r.place).replace(/\d+/, '')}</sup>`;
     place.className = 'res-place' + (r.place === 1 ? ' p1' : '');
     $('res-track').textContent = t.name;
-    $('res-time').textContent = `Time ${formatTime(r.time)}  ·  Best lap ${formatTime(r.bestLap)}`;
+    const rec = this.game.save.data.best[t.id]?.race;
+    $('res-time').textContent = `Time ${formatTime(r.time)}  ·  Record ${formatTime(rec)}`;
     const st = $('res-stars');
     st.innerHTML = '<span>★</span><span>★</span><span>★</span>';
     [...st.children].forEach((s, k) => {

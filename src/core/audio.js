@@ -104,7 +104,7 @@ export class AudioSystem {
   }
   engineUpdate(id, speedFrac, throttle, boosting, skid, dist = 0) {
     const e = this.engines.get(id);
-    if (!e) return;
+    if (!e || !Number.isFinite(speedFrac) || !Number.isFinite(throttle) || !Number.isFinite(dist)) return;
     const t = this.ctx.currentTime;
     // fake gearbox so the pitch climbs and drops like a real car
     const gears = [0, 0.16, 0.32, 0.5, 0.7, 0.88, 1.3];

@@ -198,14 +198,10 @@ export class Vehicle {
   // Race-level state lives here too so AI and player share it.
   initRace(i, lat) {
     this.reset(i, lat);
-    this.lap = 0;
-    this.lastS = this.proj.s;
-    this.progress = this.proj.s - this.path.length;
+    this.progress = this.proj.s - this.path.startS;
     this.finished = false;
     this.finishTime = 0;
     this.nitro = 0.25;
-    this.lapStart = 0;
-    this.bestLap = Infinity;
     this.stuckTime = 0;
     this.wrongWay = 0;
     this.lastSafeIdx = i;
@@ -372,6 +368,17 @@ export class Vehicle {
       }
     }
 
+    // ---- course ends act as barriers ----
+    if (pr.over) {
+      const i = pr.over < 0 ? 0 : path.N - 1;
+      const dir = pr.over < 0 ? 1 : -1;
+      const hl = Math.hypot(path.tx[i], path.tz[i]) || 1;
+      const nx = (path.tx[i] / hl) * dir, nz = (path.tz[i] / hl) * dir;
+      this.pos.x += nx * Math.abs(pr.over); this.pos.z += nz * Math.abs(pr.over);
+      const vn = this.vx * nx + this.vz * nz;
+      if (vn < 0) { this.vx -= nx * vn * 1.3; this.vz -= nz * vn * 1.3; this.wallHit = Math.max(this.wallHit, -vn); }
+    }
+
     // ---- ground ----
     const ground = path.groundAt(pr);
     const stick = this.onGround ? 0.25 : 0.03;
@@ -393,42 +400,20 @@ export class Vehicle {
   }
 
   // Lap bookkeeping, called after step.
-  updateProgress(raceTime, totalLaps) {
-    const L = this.path.length;
-    const s = this.proj.s;
-    const ds = s - this.lastS;
-    let crossed = 0;
-    if (ds < -L / 2) { this.lap++; crossed = 1; }
-    else if (ds > L / 2) { this.lap--; crossed = -1; }
-    this.lastS = s;
-    this.progress = (this.lap - 1) * L + s;
-    let lapDone = null;
-    if (crossed === 1 && this.lap >= 2) {
-      const t = raceTime - this.lapStart;
-      lapDone = t;
-      if (t < this.bestLap) this.bestLap = t;
-      this.lapStart = raceTime;
-    } else if (crossed === 1 && this.lap === 1) {
-      this.lapStart = raceTime;
-    }
-    if (!this.finished && this.lap > totalLaps) {
+  // Point-to-point progress: metres past the start line.
+  updateProgress(raceTime) {
+    this.progress = this.proj.s - this.path.startS;
+    if (!this.finished && this.proj.s >= this.path.finishS) {
       this.finished = true;
       this.finishTime = raceTime;
     }
-    return lapDone;
   }
 
   respawn() {
     const p = this.path;
-    const i = p.wrap(this.lastSafeIdx - 12);
-    let k = i;
+    let k = p.wrap(this.lastSafeIdx - 12);
     for (let n = 0; n < 60 && p.gap[k]; n++) k = p.wrap(k - 1);
-    const keepLap = this.lap, keepLast = this.lastS;
     this.reset(k, 0);
-    this.lap = keepLap; this.lastS = keepLast;
-    const s = this.proj.s;
-    if (s - keepLast > p.length / 2) this.lap--; else if (s - keepLast < -p.length / 2) this.lap++;
-    this.lastS = s;
     this.vF = 18;
     this.vx = Math.sin(this.heading) * 18;
     this.vz = Math.cos(this.heading) * 18;

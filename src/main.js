@@ -189,7 +189,7 @@ class Game {
     r.start();
     if (r.state === 'racing') {
       this.platform.gameplayStart();
-      this.audio.setMusicIntensity(r.player.lap >= r.totalLaps ? 1.5 : 1);
+      this.audio.setMusicIntensity(r.milestone >= 2 ? 1.5 : 1);
     }
   }
   restartRace() {

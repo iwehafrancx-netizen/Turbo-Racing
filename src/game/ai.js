@@ -45,9 +45,7 @@ export class AIDriver {
     let avoid = 0;
     for (const o of cars) {
       if (o === car) continue;
-      let ds = o.proj.s - car.proj.s;
-      if (ds < -p.length / 2) ds += p.length;
-      if (ds > p.length / 2) ds -= p.length;
+      const ds = o.proj.s - car.proj.s;
       if (ds > 0 && ds < 16 + speed * 0.25) {
         const dl = o.proj.lat - (car.proj.lat);
         if (Math.abs(dl) < 3.2) {
@@ -58,7 +56,19 @@ export class AIDriver {
     }
     this.avoid = this.avoid + (avoid - this.avoid) * Math.min(1, dt * 4);
     this.lane += (this.laneTarget - this.lane) * Math.min(1, dt * 0.8);
-    const lat = clamp(this.lane + this.avoid, -p.halfWidth * 0.85, p.halfWidth * 0.85);
+    let lat = clamp(this.lane + this.avoid, -p.halfWidth * 0.85, p.halfWidth * 0.85);
+    // dodge moving obstacles ahead
+    this.dodgeT = Math.max(0, (this.dodgeT || 0) - dt);
+    if (this.obstacles && this.skill > 0) {
+      for (const o of this.obstacles.list) {
+        const ds = (o.i - idx) * p.spacing;
+        if (ds < 2 || ds > 14 + speed * 1.3) continue;
+        const target = this.obstacles.dodge(o, ds, speed, this.dodgeT > 0 ? this.dodgeLat : car.proj.lat);
+        if (target !== null) { this.dodgeLat = target; this.dodgeT = 0.6; }
+        break;
+      }
+    }
+    if (this.dodgeT > 0) lat = this.dodgeLat;
 
     // --- steering toward a look-ahead point ---
     const look = Math.round((8 + speed * 0.42) / p.spacing);

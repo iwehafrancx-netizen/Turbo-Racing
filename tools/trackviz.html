@@ -24,8 +24,8 @@ for (const def of TRACKS) {
   const X = (x) => 10 + (x - b.minX) * sc, Y = (z) => 390 - (z - b.minZ) * sc;
   // road width
   ctx.lineCap = 'round';
-  for (let i = 0; i < t.N; i++) {
-    const j = (i + 1) % t.N;
+  for (let i = 0; i < t.N - 1; i++) {
+    const j = i + 1;
     const yN = (t.py[i] - b.minY) / Math.max(1, b.maxY - b.minY);
     ctx.strokeStyle = t.gap[i] ? '#f00' : t.open[i] ? '#f0f' : `hsl(${200 - yN * 200},70%,${t.bridge[i] ? 75 : 50}%)`;
     ctx.lineWidth = Math.max(2, t.halfWidth * 2 * sc);
@@ -41,7 +41,8 @@ for (const def of TRACKS) {
   t.boosts.forEach((bb) => dot(bb.i, bb.lat, '#0ff'));
   t.ramps.forEach((r) => dot(r.i, (r.l0 + r.l1) / 2, '#fa0', 5));
   t.coins.forEach((cc) => dot(cc.i, cc.lat, '#ff0', 1.5));
-  dot(0, 0, '#0f0', 6);
+  dot(t.idxAtS(t.startS / t.sScale), 0, '#0f0', 7); dot(Math.round(t.finishS / t.spacing), 0, '#fff', 7);
+  t.obstacles.forEach((o) => dot(o.i, 0, o.type === 'slide' ? '#f80' : o.type === 'sweep' ? '#f0f' : o.type === 'hammer' ? '#ff0' : '#f44', 4));
   // start direction arrow
   ctx.strokeStyle = '#0f0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(t.px[0]), Y(t.pz[0])); ctx.lineTo(X(t.px[10]), Y(t.pz[10])); ctx.stroke();
   // checks
@@ -50,14 +51,13 @@ for (const def of TRACKS) {
   const probs = [];
   const clear = t.wallDist * 2 + 4;
   for (let i = 0; i < t.N; i += 3) for (let j = i + 30; j < t.N; j += 3) {
-    if (t.N - (j - i) < 30) continue;
     const d = Math.hypot(t.px[i] - t.px[j], t.pz[i] - t.pz[j]);
     if (d < clear && Math.abs(t.py[i] - t.py[j]) < 8) probs.push(`${(i / t.N).toFixed(2)}~${(j / t.N).toFixed(2)} d=${d.toFixed(0)} dy=${Math.abs(t.py[i] - t.py[j]).toFixed(1)}`);
   }
   for (const [i, j] of t.crossings.slice(0, 1)) ctx.strokeRect(X(t.px[i]) - 6, Y(t.pz[i]) - 6, 12, 12);
   let minSafe = Math.min(...t.safeSpeed);
   let maxSlope = 0; for (let i = 0; i < t.N; i++) maxSlope = Math.max(maxSlope, Math.abs(t.ty[i]));
-  const txt = `${def.name}: len=${t.length.toFixed(0)}m N=${t.N} minR=${minR.toFixed(0)}@${(minRi / t.N).toFixed(2)} minSafe=${(minSafe * 3.6).toFixed(0)}kmh slope=${maxSlope.toFixed(2)} y=${b.minY.toFixed(0)}..${b.maxY.toFixed(0)} crossings=${t.crossings.length}\n` + (probs.length ? 'CLOSE: ' + probs.slice(0, 6).join(' | ') : 'ok');
+  const txt = `${def.name}: len=${t.length.toFixed(0)}m obs=${t.obstacles.length} N=${t.N} minR=${minR.toFixed(0)}@${(minRi / t.N).toFixed(2)} minSafe=${(minSafe * 3.6).toFixed(0)}kmh slope=${maxSlope.toFixed(2)} y=${b.minY.toFixed(0)}..${b.maxY.toFixed(0)} crossings=${t.crossings.length}\n` + (probs.length ? 'CLOSE: ' + probs.slice(0, 6).join(' | ') : 'ok');
   pre.textContent = txt; report.push(txt);
 }
 window.REPORT = report.join('\n');

@@ -1,8 +1,9 @@
 # Turbo Racing
 
 An arcade sky racer for web game portals (CrazyGames first, Playgama next).
-Ten tracks float high above the clouds. Drift to charge turbos, fire nitro,
-jump the gaps, and don't fall off the edge.
+Ten point-to-point races from a START gate to a FINISH gate, each across a
+different dream-like sky world. Drift to charge turbos, fire nitro, jump the
+gaps and dodge the moving obstacles.
 
 ## Play locally
 
@@ -51,23 +52,24 @@ To add a portal, write one adapter next to `crazygames.js`, pick it in
 C camera, R reset car, ESC pause. Gamepads work, and phones and tablets get
 touch buttons with auto-accelerate.
 
-**Core loop:** drift through corners to charge a 3-tier mini-turbo
-(blue → orange → purple). Drifting, airtime, coins and slipstreaming fill the
-nitro bar. A top-3 finish unlocks the next track; a win earns ★★★. Coins buy
-cars and upgrades (engine, turbo, tyres).
+**Core loop:** every race runs from START to FINISH (no laps). Drift through
+corners to charge a 3-tier mini-turbo (blue → orange → purple). Drifting,
+airtime, coins and slipstreaming fill the nitro bar. Dodge moving obstacles:
+sliding blocks, spinning bars, swinging hammers and slamming pistons. A top-3
+finish unlocks the next track; a win earns ★★★. Coins buy cars and upgrades.
 
-| # | Track | World | Gimmick |
-|---|-------|-------|---------|
-| 1 | Sunrise Skyway | golden sunrise, palm islands | first gap jump, roller hills |
-| 2 | Neon Sky City | midnight neon towers, rain | neon arches, gap on the main straight |
-| 3 | Mirage Mesas | floating desert rocks | gorge jump, first rail-less section |
-| 4 | Spiral Summit | snowy peaks | climbing ice helix, then a plunge |
-| 5 | Jungle Sky Isles | waterfall islands, temple | vine hills, gap, rail-less start |
-| 6 | Volcano Inferno | ash skies, lava falls | figure-8 with a bridge jump over the crossing |
-| 7 | Airship Harbor | floating docks, airships | 90° drift corners, open-edge straight |
-| 8 | Aurora Glacier | northern lights, ice | slippery ice, jumps, open edges |
-| 9 | Storm Runner | thunderstorm, lightning | mostly rail-less, two big gaps |
-| 10 | Galaxy Grand Prix | space, nebula, planets | bowtie with jumps over the crossover |
+| # | Track | World | Highlights |
+|---|-------|-------|-----------|
+| 1 | Candy Cloud Run | cotton-candy sky | rainbow sugar road, lollipops, giant donuts, rainbow arches |
+| 2 | Neon Grid Rush | synthwave night | glowing grid road, giant striped sun, neon shapes, sliding blocks |
+| 3 | Prism Peaks | crystal sky | iridescent road, a spiral climb under itself, spinning bars |
+| 4 | Golden Temple | golden sunrise | marble and gold road, temple islands, swinging hammers |
+| 5 | Lantern Festival | moonlit night | red lacquer road, torii gates, a thousand rising lanterns |
+| 6 | Lava Forge | burning sky | obsidian road with lava cracks, meteors, slamming pistons |
+| 7 | Sky Reef | ocean-blue sky | bubble road, flying sky-whales, jellyfish, coral islands |
+| 8 | Aurora Ribbon | polar night | slippery ice ribbon, aurora curtains, shooting stars |
+| 9 | Thunder Citadel | thunderstorm | chrome road with lightning, sky fortress, real lightning bolts |
+| 10 | Cosmic Rainbow Road | galaxy | rainbow road, black hole, ringed planet, every obstacle type |
 
 **Cars:** Drift Ronin (starter), Clubsport GT4, Carbon Stingray, Silhouette R.
 The display names are original nicknames, so no car brand appears in the UI.
@@ -77,9 +79,9 @@ The display names are original nicknames, so no car brand appears in the UI.
 ```
 index.html, css/, fonts/        UI shell and styling
 src/main.js                     game controller (screens, race lifecycle, ads)
-src/data/                       tracks, themes, cars: tweak the game here
-src/world/                      track path math, track meshes, sky, scenery
-src/game/                       car physics, AI, race rules, camera, effects
+src/data/                       courses, worlds, cars: tweak the game here
+src/world/                      course path, road meshes, sky, sky set pieces, scenery
+src/game/                       car physics, AI, obstacles, race rules, camera, effects
 src/ui/                         menus, HUD, garage showroom
 src/platform/                   portal adapters (CrazyGames, local)
 lib/three/                      vendored three.js r170 + Draco decoder

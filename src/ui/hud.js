@@ -1,5 +1,8 @@
 import { formatTime, ordinal, clamp } from '../core/util.js';
 import { DRIFT_COLORS } from '../game/car.js';
+import { RUNOFF, START_S } from '../world/trackpath.js';
+
+const getLen = (def) => def.course.length - RUNOFF - START_S;
 
 const $ = (id) => document.getElementById(id);
 
@@ -17,7 +20,8 @@ export class Hud {
   constructor() {
     this.el = $('hud');
     this.pos = $('h-pos'); this.suf = $('h-suf'); this.posWrap = this.pos.parentElement;
-    this.lap = $('h-lap'); this.laps = $('h-laps');
+    this.dist = $('h-dist');
+    this.progFill = $('hp-fill'); this.progDots = $('hp-dots');
     this.timeEl = $('h-time'); this.best = $('h-best');
     this.board = $('h-board');
     this.speed = $('h-speed');
@@ -39,7 +43,10 @@ export class Hud {
   show(on) { this.el.classList.toggle('hidden', !on); if (!on) this.speedlines.style.opacity = 0; }
 
   setup(race, isMobile) {
-    this.laps.textContent = race.totalLaps;
+    this.raceKm = (race.raceLen / 1000).toFixed(1);
+    this.progDots.innerHTML = race.cars.map((c) => `<i class="${c.isPlayer ? 'me' : ''}"></i>`).join('');
+    const rec = race.game.save.data.best[race.def.id];
+    this.best.textContent = rec?.race ? formatTime(rec.race) : '--';
     this._buildMap(race.path);
     this.wrong.classList.remove('on');
     this.driftEl.className = 'h-drift';
@@ -69,18 +76,20 @@ export class Hud {
     x.lineJoin = 'round'; x.lineCap = 'round';
     const trace = () => {
       x.beginPath();
-      for (let i = 0; i <= path.N; i += 3) {
-        const k = i % path.N;
+      for (let i = 0; i < path.N; i += 3) {
+        const k = i;
         if (i === 0) x.moveTo(this.mx(path.px[k]), this.mz(path.pz[k]));
         else x.lineTo(this.mx(path.px[k]), this.mz(path.pz[k]));
       }
-      x.closePath();
     };
     x.strokeStyle = 'rgba(0,0,0,0.6)'; x.lineWidth = 9; trace(); x.stroke();
     x.strokeStyle = 'rgba(255,255,255,0.85)'; x.lineWidth = 4; trace(); x.stroke();
-    // start line
-    x.fillStyle = '#ff3b6b';
-    x.beginPath(); x.arc(this.mx(path.px[0]), this.mz(path.pz[0]), 4, 0, 7); x.fill();
+    // start and finish
+    const si = Math.round(path.startS / path.spacing), fi = Math.round(path.finishS / path.spacing);
+    x.fillStyle = '#7dff9a';
+    x.beginPath(); x.arc(this.mx(path.px[si]), this.mz(path.pz[si]), 5, 0, 7); x.fill();
+    x.fillStyle = '#ffffff'; x.fillRect(this.mx(path.px[fi]) - 5, this.mz(path.pz[fi]) - 5, 10, 10);
+    x.fillStyle = '#111111'; x.fillRect(this.mx(path.px[fi]) - 5, this.mz(path.pz[fi]) - 5, 5, 5); x.fillRect(this.mx(path.px[fi]), this.mz(path.pz[fi]), 5, 5);
     this.mapBase = c;
   }
 
@@ -89,11 +98,13 @@ export class Hud {
     this._introShown = true;
     $('hi-num').textContent = `TRACK ${idx + 1}`;
     $('hi-name').textContent = def.name;
-    $('hi-tag').textContent = `${def.tagline} · ${def.laps} laps`;
+    $('hi-tag').textContent = `${def.tagline} · ${(getLen(def) / 1000).toFixed(1)} km`;
     const hint = $('hi-hint');
     hint.style.display = '';
-    if (def.open?.length) hint.textContent = '⚠ No guard rails on some sections. Don\'t fall!';
-    else if (def.gaps?.length && idx < 3) hint.textContent = 'Hit the ramps at full speed to clear the gaps!';
+    const F = def.course.features;
+    if (F.obstacles.length && idx < 4) hint.textContent = '⚠ Watch out for moving obstacles on the road!';
+    else if (F.open.length) hint.textContent = '⚠ No guard rails on some sections. Don\'t fall!';
+    else if (F.gaps.length && idx < 3) hint.textContent = 'Hit the ramps at full speed to clear the gaps!';
     else if (idx < 3) hint.innerHTML = 'Hold <kbd>GAS</kbd> right as the lights hit GO for a turbo start!';
     else hint.style.display = 'none';
     this.intro.classList.add('on');
@@ -145,12 +156,13 @@ export class Hud {
       this.posWrap.classList.toggle('p1', place === 1);
       this.posWrap.classList.remove('bump'); void this.posWrap.offsetWidth; this.posWrap.classList.add('bump');
     }
-    const lap = clamp(p.lap, 1, race.totalLaps);
-    if (L.lap !== lap) { L.lap = lap; this.lap.textContent = lap; }
+    const km = (clamp(p.progress, 0, race.raceLen) / 1000).toFixed(1);
+    if (L.km !== km) { L.km = km; this.dist.textContent = `${km} / ${this.raceKm} KM`; }
+    const fr = (c) => clamp(c.progress / race.raceLen, 0, 1) * 100;
+    this.progFill.style.width = fr(p).toFixed(1) + '%';
+    race.cars.forEach((c, k) => { const d = this.progDots.children[k]; if (d) d.style.left = fr(c).toFixed(1) + '%'; });
     const t = Math.max(0, race.time);
     this.timeEl.textContent = formatTime(t);
-    const best = isFinite(p.bestLap) ? formatTime(p.bestLap) : '--';
-    if (L.best !== best) { L.best = best; this.best.textContent = best; }
     if (race.time > 8 && this.help.style.opacity !== '0') this.help.style.opacity = 0;
 
     // leaderboard
