@@ -1,26 +1,21 @@
 # Flop Cannoñ
 
-A cannon-launch ragdoll game. Fire a floppy crash-test dummy out of a cannon and see how far it flops.
+A 3D spinning-gun ragdoll shooter, modelled on how the "Ragdoll Gun Shooter / Cannon Spinner" YouTube Playable plays. All the art, models, levels and sounds are new and made in code.
 
-Everything is in `index.html`: the physics, the drawn art and the synthesized sound. There are no image or audio files. It is completely separate from the racing game in `Assets/`.
+## How to play
+- **Tap / click / Space** fires the gun.
+- The gun spins in mid-air. Each shot fires where the barrel is pointing, and the recoil knocks the gun back and spins it faster.
+- Shoot downward to push the gun back up. **If the gun hits the ground, the level fails.**
+- Knock out every ragdoll enemy to get **LEVEL COMPLETE**, then **REPLAY** or **NEXT**.
 
-## Play
-Open `index.html` in any browser on desktop or phone. You can also host the folder on GitHub Pages or Netlify.
+## In the game
+- Floppy ragdoll enemies that turn grey with dizzy stars when knocked out.
+- Rooftop snipers, armed enemies that aim at your gun, and walkers you have to stop before they escape.
+- A boulder held back by a wooden fence: shoot the fence and it rolls over everyone.
+- TNT barrels (chain explosions), crate towers and planks, all with physics.
+- 10 hand-made levels, then endless generated levels.
+- Coins and gems, plus a **Gun Shop** with 7 gun skins. Progress is saved in the browser.
+- Synthesized sound effects, with a mute button.
 
-## Controls
-| Step | Tap / click / Space |
-|------|---------------------|
-| 1 | Lock the cannon **angle** (it swings up and down) |
-| 2 | Lock the **power** meter and **FIRE** |
-| 3 | In the air, tap or press **BOOST** to rocket forward (limited per shot) |
-
-## Things on the course
-- **Trampolines**: BOING, big bounce
-- **TNT**: KABOOM, huge launch
-- **Balloons**: pop for a lift
-- **Speed pads** and **turbo rings**: extra forward speed
-- **Coins**: spend them on upgrades
-- **Cacti** (after 250 m): your dummy gets stuck and the run ends
-
-## Upgrades
-Cannon Power, Bouncy Suit and Rocket Boosts. Your coins, upgrades and best distance are saved in the browser.
+## Running it
+Open `index.html` in a browser. It works offline because three.js is bundled in `lib/` (MIT licence included). Landscape is best on phones.
